@@ -1,0 +1,30 @@
+# Compiled objects
+*.o
+
+# Executables
+*.exe
+*.out
+*.app
+interactive_sim
+test_all_fixed
+tests/test_all_fixed
+
+# Logs
+*.log
+temp_compiler_output.txt
+
+# CMake
+build/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+Thumbs.db
