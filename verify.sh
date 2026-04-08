@@ -1,8 +1,10 @@
 #!/bin/bash
 # Complete verification script for Random Number Generators
 
+mkdir -p build/manual/tests
+
 echo "=== Step 1: Compile all generators and main test ==="
-g++ -o tests/test_all_fixed tests/test_all_fixed.cpp \
+g++ -o build/manual/tests/test_all_fixed.exe tests/test_all_fixed.cpp \
     src/RandomGenerator.cpp \
     src/UniformGenerator/UniformGenerator.cpp \
     src/UniformGenerator/PseudoGenerator.cpp \
@@ -12,7 +14,7 @@ g++ -o tests/test_all_fixed tests/test_all_fixed.cpp \
     src/DiscreteGenerator/HeadTail.cpp \
     src/DiscreteGenerator/Bernoulli.cpp \
     src/DiscreteGenerator/Binomial.cpp \
-    src/DiscreteGenerator/FiniteSet.cpp \
+    src/DiscreteGenerator/Finiteset.cpp \
     src/DiscreteGenerator/Poisson.cpp \
     src/ContinuousGenerator/ContinuousGenerator.cpp \
     src/ContinuousGenerator/BivariateNormal.cpp \
@@ -24,7 +26,7 @@ if [ $? -eq 0 ]; then
     echo "✓ Compilation successful!"
     echo ""
     echo "=== Step 2: Run the test program ==="
-    ./tests/test_all_fixed.exe
+    ./build/manual/tests/test_all_fixed.exe
     echo ""
     echo "=== Verification complete ==="
 else

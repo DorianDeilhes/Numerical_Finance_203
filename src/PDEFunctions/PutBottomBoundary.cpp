@@ -1,15 +1,15 @@
 #include "PDEFunctions/PutBottomBoundary.h"
+#include <algorithm>
+#include <cmath>
 
-PutBottomBoundary::PutBottomBoundary(double sMin, double strike)
-    : sMin_(sMin), strike_(strike) {}
+PutBottomBoundary::PutBottomBoundary(double sMin, double strike, double rate,
+                                     double maturity)
+    : sMin_(sMin), strike_(strike), rate_(rate), maturity_(maturity) {}
 
 double PutBottomBoundary::operator()(double t) {
-  (void)t;
-
-  if (strike_ > sMin_) {
-    return strike_ - sMin_;
-  }
-  return 0.0;
+  const double tau = std::max(maturity_ - t, 0.0);
+  const double discountedStrike = strike_ * std::exp(-rate_ * tau);
+  return std::max(discountedStrike - sMin_, 0.0);
 }
 
 PutBottomBoundary::~PutBottomBoundary() {}

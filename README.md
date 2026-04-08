@@ -90,13 +90,13 @@ If you do not have CMake configured, you can use the provided helper scripts fro
 **On Windows (CMD/PowerShell):**
 ```bash
 .\build_interactive.bat
-.\interactive_sim.exe
+.\build\manual\interactive_sim.exe
 ```
 
 **On Linux or macOS (Bash):**
 ```bash
 bash build_interactive.sh
-./interactive_sim.exe
+./build/manual/interactive_sim.exe
 ```
 
 **Verify Tests (Bash only):**
@@ -104,6 +104,8 @@ To instantly compile and verify all distributions without CMake:
 ```bash
 bash verify.sh
 ```
+
+Manual scripts now place generated executables in `build/manual/` to keep the project root and `tests/` folders clean.
 
 ## Implemented Generators
 

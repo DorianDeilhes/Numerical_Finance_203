@@ -2,6 +2,24 @@
 
 #include "PDE/PDEGrid2D.h"
 
+/**
+ * PDEGridTheta: theta-scheme for parabolic PDEs.
+ *
+ * The scheme interpolates between explicit and implicit time stepping:
+ *   (v_j^k - v_j^{k-1}) / h0
+ *   + theta * L^{k-1}(v^{k-1})
+ *   + (1 - theta) * L^k(v^k)
+ *   + f = 0
+ *
+ * where L is the spatial operator coming from the PDE coefficients.
+ *
+ * Special cases:
+ *   - Theta = 0   -> explicit
+ *   - Theta = 1   -> implicit
+ *   - Theta = 1/2 -> Crank-Nicolson
+ *
+ * The class stores only the scalar theta; all other data are inherited from PDEGrid2D.
+ */
 class PDEGridTheta : public PDEGrid2D {
 public:
   PDEGridTheta(double T, double MinX, double MaxX, double h0, double h1,

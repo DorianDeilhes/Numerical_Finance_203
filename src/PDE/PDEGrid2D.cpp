@@ -30,19 +30,45 @@ PDEGrid2D::~PDEGrid2D() {
 }
 
 void PDEGrid2D::FillNodes() {
-  // Base grid filling implementation
-  FillTopAndBottomBoundary();
   FillRightBoundary();
+  FillTopAndBottomBoundary();
 }
 
+
 double PDEGrid2D::GetValue(double time, double spot) {
-  // Implementation for getting a value from the grid
+  if (Nodes.empty()) {
+    return 0.0;
+  }
+
+  long long timeIndex = static_cast<long long>(std::round(time / h0));
+  long long spotIndex = static_cast<long long>(std::round((spot - MinX) / h1));
+
+  if (timeIndex < 0) {
+    timeIndex = 0;
+  } else if (timeIndex >= static_cast<long long>(NodesHeight)) {
+    timeIndex = static_cast<long long>(NodesHeight) - 1;
+  }
+
+  if (spotIndex < 0) {
+    spotIndex = 0;
+  } else if (spotIndex >= static_cast<long long>(NodesWidth)) {
+    spotIndex = static_cast<long long>(NodesWidth) - 1;
+  }
+
+  return Nodes[static_cast<size_t>(timeIndex)][static_cast<size_t>(spotIndex)];
 }
 
 void PDEGrid2D::FillTopAndBottomBoundary() {
-  // Implementation for filling top and bottom boundaries
+  for (size_t i = 0; i < NodesHeight; ++i) {
+    const double time = static_cast<double>(i) * h0;
+    Nodes[i][0] = BottomBoundaryFunction->operator()(time);
+    Nodes[i][NodesWidth - 1] = TopBoundaryFunction->operator()(time);
+  }
 }
 
 void PDEGrid2D::FillRightBoundary() {
-  // Implementation for filling the right boundary
+  for (size_t j = 0; j < NodesWidth; ++j) {
+    const double spot = MinX + static_cast<double>(j) * h1;
+    Nodes[NodesHeight - 1][j] = RightBoundaryFunction->operator()(spot);
+  }
 }

@@ -10,9 +10,26 @@ PDEGridExplicit::PDEGridExplicit(double T, double MinX, double MaxX, double h0,
                 BottomBoundaryFunction, RightBoundaryFunction) {}
 
 void PDEGridExplicit::FillNodes() {
-  // TODO: implement the explicit finite-difference update for interior nodes.
-  // You will probably call the boundary-filling helpers from PDEGrid2D here too.
   PDEGrid2D::FillNodes();
+
+  if (NodesHeight < 2 || NodesWidth < 3) {
+    return;
+  }
+
+  for (size_t k = NodesHeight - 1; k > 0; --k) {
+    for (size_t j = 1; j + 1 < NodesWidth; ++j) {
+      const double x = MinX + static_cast<double>(j) * h1;
+      const double t = static_cast<double>(k) * h0;
+
+      const double ajk_h0_h1_sq = h0 * (*a)(x, t) / (h1 * h1);
+      const double bjk_h0_h1 = h0 * (*b)(x, t) / h1;
+
+      Nodes[k - 1][j] =
+          Nodes[k][j] * (1.0 - ajk_h0_h1_sq - bjk_h0_h1 - h0 * (*r)(x, t)) +
+          Nodes[k][j + 1] * (bjk_h0_h1 + 0.5 * ajk_h0_h1_sq) +
+          Nodes[k][j - 1] * (0.5 * ajk_h0_h1_sq) + h0 * (*f)(x, t);
+    }
+  }
 }
 
 PDEGridExplicit::~PDEGridExplicit() {}

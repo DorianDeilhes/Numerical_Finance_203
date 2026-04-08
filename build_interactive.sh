@@ -2,7 +2,9 @@
 
 echo "Building Interactive Simulator..."
 
-g++ -I. -I include -std=c++11 -Wall -o interactive_sim.exe interactive_sim.cpp \
+mkdir -p build/manual
+
+g++ -I. -I include -std=c++11 -Wall -o build/manual/interactive_sim.exe interactive_sim.cpp \
     src/RandomGenerator.cpp \
     src/UniformGenerator/UniformGenerator.cpp \
     src/UniformGenerator/PseudoGenerator.cpp \
@@ -12,7 +14,7 @@ g++ -I. -I include -std=c++11 -Wall -o interactive_sim.exe interactive_sim.cpp \
     src/DiscreteGenerator/HeadTail.cpp \
     src/DiscreteGenerator/Bernoulli.cpp \
     src/DiscreteGenerator/Binomial.cpp \
-    src/DiscreteGenerator/FiniteSet.cpp \
+    src/DiscreteGenerator/Finiteset.cpp \
     src/DiscreteGenerator/Poisson.cpp \
     src/ContinuousGenerator/ContinuousGenerator.cpp \
     src/ContinuousGenerator/BivariateNormal.cpp \
@@ -20,7 +22,7 @@ g++ -I. -I include -std=c++11 -Wall -o interactive_sim.exe interactive_sim.cpp \
     src/ContinuousGenerator/Normal.cpp
 
 if [ $? -eq 0 ]; then
-    echo "Build successful! Run it using: ./interactive_sim.exe"
+    echo "Build successful! Run it using: ./build/manual/interactive_sim.exe"
 else
     echo "Build failed."
     exit 1
