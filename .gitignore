@@ -25,6 +25,9 @@ compile_commands.json
 .vscode/
 .idea/
 
+# Local project notes
+information/
+
 # OS generated files
 .DS_Store
 Thumbs.db

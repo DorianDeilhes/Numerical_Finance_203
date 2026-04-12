@@ -2,8 +2,10 @@
 
 #include "SDE/BrownianND.h"
 
+// Base parameter container for two-asset correlated Black-Scholes dynamics.
 class BlackScholes2D : public RandomProcess {
 public:
+  // Stores model parameters used by 2D Black-Scholes simulation schemes.
   BlackScholes2D(RandomGenerator* generator, double spot1, double spot2,
                  double rate1, double rate2, double vol1, double vol2,
                  double rho);

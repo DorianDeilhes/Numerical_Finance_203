@@ -48,6 +48,54 @@ target_compile_options(test_all_fixed PRIVATE
     -pedantic
 )
 
+add_executable(test_sde_fixed
+    tests/test_sde_fixed.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(test_sde_fixed PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(test_sde_fixed PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
+add_executable(test_mc_core
+    tests/test_mc_core.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(test_mc_core PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(test_mc_core PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
+add_executable(test_basket
+    tests/test_basket.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(test_basket PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(test_basket PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
 # Enable testing via CTest (so 'make test' is natively supported)
 enable_testing()
 add_test(NAME comprehensive_tests COMMAND test_all_fixed)
+add_test(NAME sde_tests COMMAND test_sde_fixed)
+add_test(NAME mc_core_tests COMMAND test_mc_core)
+add_test(NAME basket_tests COMMAND test_basket)

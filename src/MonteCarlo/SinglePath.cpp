@@ -1,9 +1,16 @@
 #include "MonteCarlo/SinglePath.h"
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 
 SinglePath::SinglePath(double startTime, double endTime, size_t nbSteps)
     : StartTime_(startTime), EndTime_(endTime), NbSteps_(nbSteps) {
+  if (!(endTime > startTime)) {
+    throw std::runtime_error("SinglePath requires endTime to be strictly greater than startTime");
+  }
+  if (nbSteps == 0) {
+    throw std::runtime_error("SinglePath requires a strictly positive number of time steps");
+  }
   Values_.reserve(nbSteps + 1);
 }
 
