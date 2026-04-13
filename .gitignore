@@ -27,6 +27,7 @@ compile_commands.json
 
 # Local project notes
 information/
+tmp/session_artifacts/
 
 # OS generated files
 .DS_Store

@@ -93,9 +93,41 @@ target_compile_options(test_basket PRIVATE
     -pedantic
 )
 
+add_executable(test_phase3
+    tests/test_phase3.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(test_phase3 PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(test_phase3 PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
+add_executable(test_bermudan
+    tests/test_bermudan.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(test_bermudan PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(test_bermudan PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
 # Enable testing via CTest (so 'make test' is natively supported)
 enable_testing()
 add_test(NAME comprehensive_tests COMMAND test_all_fixed)
 add_test(NAME sde_tests COMMAND test_sde_fixed)
 add_test(NAME mc_core_tests COMMAND test_mc_core)
 add_test(NAME basket_tests COMMAND test_basket)
+add_test(NAME phase3_tests COMMAND test_phase3)
+add_test(NAME bermudan_tests COMMAND test_bermudan)
