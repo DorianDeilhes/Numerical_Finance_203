@@ -1,6 +1,6 @@
 #include "MonteCarlo/Helper/SimulateGeometricBrownianSpotsAtStepIndicesND.h"
 
-#include "MonteCarlo/Helper/GeometricBrownianEulerStep.h"
+#include "MonteCarlo/Helper/GeometricBrownianExactStep.h"
 #include "MonteCarlo/Helper/ValidateTimeGrid.h"
 #include "MonteCarlo/SinglePath.h"
 #include "SDE/BrownianND.h"
@@ -32,9 +32,13 @@ std::vector<std::vector<double>> SimulateGeometricBrownianSpotsAtStepIndicesND(
 
   for (size_t i = 0; i < step_indices.size(); ++i) {
     const size_t step = step_indices[i];
-    if (step == 0 || step > nb_steps) {
+    if (step > nb_steps) {
       throw std::runtime_error(
-          "SimulateGeometricBrownianSpotsAtStepIndicesND step index outside [1, nb_steps]");
+          "SimulateGeometricBrownianSpotsAtStepIndicesND step index outside [0, nb_steps]");
+    }
+    if (step == 0 && i != 0) {
+      throw std::runtime_error(
+          "SimulateGeometricBrownianSpotsAtStepIndicesND only accepts step 0 as the first index");
     }
     if (i > 0 && step_indices[i - 1] >= step) {
       throw std::runtime_error(
@@ -51,6 +55,10 @@ std::vector<std::vector<double>> SimulateGeometricBrownianSpotsAtStepIndicesND(
 
   const double dt = (end_time - start_time) / static_cast<double>(nb_steps);
   size_t record_cursor = 0;
+  if (step_indices[record_cursor] == 0) {
+    recorded_spots[record_cursor] = current_spots;
+    ++record_cursor;
+  }
 
   for (size_t step = 0; step < nb_steps; ++step) {
     const double current_time = start_time + static_cast<double>(step) * dt;
@@ -63,7 +71,7 @@ std::vector<std::vector<double>> SimulateGeometricBrownianSpotsAtStepIndicesND(
             "SimulateGeometricBrownianSpotsAtStepIndicesND failed to retrieve a Brownian path");
       }
       const double increment = path->GetState(next_time) - path->GetState(current_time);
-      current_spots[i] = GeometricBrownianEulerStep(current_spots[i], rate, volatilities[i], dt,
+      current_spots[i] = GeometricBrownianExactStep(current_spots[i], rate, volatilities[i], dt,
                                                     increment / std::sqrt(dt));
     }
 

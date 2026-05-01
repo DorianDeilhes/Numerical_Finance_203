@@ -27,8 +27,11 @@ std::vector<size_t> ConvertExerciseDatesToStepIndices(const std::vector<double>&
     }
 
     const size_t step = static_cast<size_t>(rounded);
-    if (step == 0 || step > nb_steps) {
+    if (step > nb_steps) {
       throw std::invalid_argument("BermudanBasket: computed step index is outside valid range");
+    }
+    if (step == 0 && i != 0) {
+      throw std::invalid_argument("BermudanBasket: only the first exercise step may be 0");
     }
     if (!step_indices.empty() && step_indices.back() >= step) {
       throw std::invalid_argument("BermudanBasket: exercise step indices must be strictly increasing");

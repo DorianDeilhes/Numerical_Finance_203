@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <vector>
 
 namespace PricingHelper {
@@ -11,6 +12,7 @@ void ValidateEuropeanBasketInputs(
     double strike,
     double maturity,
     double riskFreeRate,
-    const std::vector<std::vector<double>>& correlationMatrix);
+    const std::vector<std::vector<double>>& correlationMatrix,
+    size_t nbSteps);
 
 }  // namespace PricingHelper

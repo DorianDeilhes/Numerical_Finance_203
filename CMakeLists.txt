@@ -31,6 +31,60 @@ target_compile_options(interactive_sim PRIVATE
 )
 
 # ----------------------------------------------------------------------
+# Target 1b: Professor Smoke Test
+# ----------------------------------------------------------------------
+add_executable(professor_smoke_test
+    professor_smoke_test.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(professor_smoke_test PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(professor_smoke_test PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
+# ----------------------------------------------------------------------
+# Target 1c: Professor Editable Scenario
+# ----------------------------------------------------------------------
+add_executable(professor_editable_scenario
+    professor_editable_scenario.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(professor_editable_scenario PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(professor_editable_scenario PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
+# ----------------------------------------------------------------------
+# Target 1d: Report Results Generator
+# ----------------------------------------------------------------------
+add_executable(report_results
+    report_results.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(report_results PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(report_results PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
+# ----------------------------------------------------------------------
 # Target 2: Comprehensive Test Suite
 # ----------------------------------------------------------------------
 add_executable(test_all_fixed
@@ -123,6 +177,21 @@ target_compile_options(test_bermudan PRIVATE
     -pedantic
 )
 
+add_executable(test_phase6_stress
+    tests/test_phase6_stress.cpp
+    ${RNG_SOURCES}
+)
+
+target_include_directories(test_phase6_stress PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_compile_options(test_phase6_stress PRIVATE
+    -Wall
+    -Wextra
+    -pedantic
+)
+
 # Enable testing via CTest (so 'make test' is natively supported)
 enable_testing()
 add_test(NAME comprehensive_tests COMMAND test_all_fixed)
@@ -131,3 +200,5 @@ add_test(NAME mc_core_tests COMMAND test_mc_core)
 add_test(NAME basket_tests COMMAND test_basket)
 add_test(NAME phase3_tests COMMAND test_phase3)
 add_test(NAME bermudan_tests COMMAND test_bermudan)
+add_test(NAME phase6_stress_tests COMMAND test_phase6_stress)
+add_test(NAME professor_smoke_test COMMAND professor_smoke_test)

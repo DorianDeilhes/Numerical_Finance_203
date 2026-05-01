@@ -3,6 +3,7 @@
 #include "Pricing/Helper/ValidateCorrelationMatrix.h"
 #include "Pricing/Helper/ValidateExerciseDates.h"
 
+#include <cmath>
 #include <stdexcept>
 
 namespace PricingHelper {
@@ -29,19 +30,37 @@ void ValidateBermudanBasketInputs(const std::vector<double>& spot_prices,
   }
 
   for (size_t i = 0; i < dimension; ++i) {
+    if (!std::isfinite(spot_prices[i])) {
+      throw std::invalid_argument("BermudanBasket: spot prices must be finite");
+    }
     if (spot_prices[i] <= 0.0) {
       throw std::invalid_argument("BermudanBasket: spot prices must be positive");
+    }
+    if (!std::isfinite(volatilities[i])) {
+      throw std::invalid_argument("BermudanBasket: volatilities must be finite");
     }
     if (volatilities[i] < 0.0) {
       throw std::invalid_argument("BermudanBasket: volatilities must be non-negative");
     }
+    if (!std::isfinite(weights[i])) {
+      throw std::invalid_argument("BermudanBasket: weights must be finite");
+    }
   }
 
+  if (!std::isfinite(strike)) {
+    throw std::invalid_argument("BermudanBasket: strike must be finite");
+  }
   if (strike < 0.0) {
     throw std::invalid_argument("BermudanBasket: strike must be non-negative");
   }
+  if (!std::isfinite(maturity)) {
+    throw std::invalid_argument("BermudanBasket: maturity must be finite");
+  }
   if (maturity <= 0.0) {
     throw std::invalid_argument("BermudanBasket: maturity must be positive");
+  }
+  if (!std::isfinite(risk_free_rate)) {
+    throw std::invalid_argument("BermudanBasket: risk-free rate must be finite");
   }
   if (risk_free_rate < 0.0) {
     throw std::invalid_argument("BermudanBasket: risk-free rate must be non-negative");

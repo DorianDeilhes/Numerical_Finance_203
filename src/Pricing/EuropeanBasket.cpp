@@ -5,10 +5,12 @@
 #include "MonteCarlo/Helper/SimulateGeometricBrownianTerminalND.h"
 #include "MonteCarlo/Helper/SimulateGeometricBrownianTerminalNDAntithetic.h"
 #include "Pricing/Helper/ApplyControlVariate.h"
+#include "Pricing/Helper/BuildLoadingMatrixFromCorrelation.h"
 #include "Pricing/Helper/DiscountedBasketValue.h"
 #include "Pricing/Helper/EstimateControlVariateBeta.h"
 #include "Pricing/Helper/KnownMeanDiscountedBasketValue.h"
 #include "Pricing/Helper/ValidateEuropeanBasketInputs.h"
+#include "Pricing/Helper/ValidatePricingMethodInputs.h"
 #include <cmath>
 #include <stdexcept>
 #include <utility>
@@ -29,19 +31,21 @@ EuropeanBasket::EuropeanBasket(const std::vector<double>& spot_prices,
       maturity_(maturity),
       risk_free_rate_(risk_free_rate),
       correlation_matrix_(correlation_matrix),
+      loading_matrix_(),
       nb_steps_(nb_steps) {
   ValidateInputs();
+  loading_matrix_ = PricingHelper::BuildLoadingMatrixFromCorrelation(correlation_matrix_);
 }
 
 void EuropeanBasket::ValidateInputs() {
   PricingHelper::ValidateEuropeanBasketInputs(
       spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
-      correlation_matrix_);
+      correlation_matrix_, nb_steps_);
 }
 
 double EuropeanBasket::SinglePathPayoff(UniformGenerator* uniform_gen) {
   std::vector<double> terminalSpots = MonteCarloHelper::SimulateGeometricBrownianTerminalND(
-      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &correlation_matrix_, 0.0,
+      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
       maturity_, nb_steps_);
 
   const double payoff = MonteCarloHelper::BasketCallPayoff(terminalSpots, weights_, strike_);
@@ -51,7 +55,7 @@ double EuropeanBasket::SinglePathPayoff(UniformGenerator* uniform_gen) {
 std::pair<double, double> EuropeanBasket::SinglePathPayoffAndControl(
     UniformGenerator* uniform_gen) {
   std::vector<double> terminalSpots = MonteCarloHelper::SimulateGeometricBrownianTerminalND(
-      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &correlation_matrix_, 0.0,
+      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
       maturity_, nb_steps_);
 
   const double callPayoff = MonteCarloHelper::BasketCallPayoff(terminalSpots, weights_, strike_);
@@ -68,7 +72,7 @@ std::pair<double, double> EuropeanBasket::SinglePathAntitheticAverages(
     UniformGenerator* uniform_gen) {
   MonteCarloHelper::TerminalSpotsAntitheticPair terminals =
       MonteCarloHelper::SimulateGeometricBrownianTerminalNDAntithetic(
-          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &correlation_matrix_,
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_,
           0.0, maturity_, nb_steps_);
 
   const double directCall =
@@ -94,7 +98,7 @@ std::pair<double, double> EuropeanBasket::SinglePathAntitheticAverages(
 double EuropeanBasket::SinglePathAntitheticPayoffOnly(UniformGenerator* uniform_gen) {
   MonteCarloHelper::TerminalSpotsAntitheticPair terminals =
       MonteCarloHelper::SimulateGeometricBrownianTerminalNDAntithetic(
-          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &correlation_matrix_,
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_,
           0.0, maturity_, nb_steps_);
 
   const double directCall =
@@ -112,6 +116,10 @@ double EuropeanBasket::SinglePathAntitheticPayoffOnly(UniformGenerator* uniform_
 
 MonteCarloSummary EuropeanBasket::PriceFixedN(UniformGenerator* uniform_gen,
                                                size_t num_samples) {
+  PricingHelper::ValidateUniformGeneratorPointer(uniform_gen, "EuropeanBasket::PriceFixedN");
+  PricingHelper::ValidateCountAtLeast(num_samples, 2, "EuropeanBasket::PriceFixedN",
+                                      "num_samples");
+
   // Sampler: single path payoff (stateless, uses uniform_gen for randomness).
   const std::function<double()> sampler = [this, uniform_gen]() {
     return SinglePathPayoff(uniform_gen);
@@ -125,6 +133,9 @@ MonteCarloSummary EuropeanBasket::PriceFixedPrecision(UniformGenerator* uniform_
                                                        double epsilon,
                                                        size_t min_samples,
                                                        size_t max_samples) {
+  PricingHelper::ValidateUniformGeneratorPointer(uniform_gen,
+                                                 "EuropeanBasket::PriceFixedPrecision");
+
   // Sampler: single path payoff.
   const std::function<double()> sampler = [this, uniform_gen]() {
     return SinglePathPayoff(uniform_gen);
@@ -136,6 +147,11 @@ MonteCarloSummary EuropeanBasket::PriceFixedPrecision(UniformGenerator* uniform_
 
 MonteCarloSummary EuropeanBasket::PriceFixedNAntithetic(UniformGenerator* uniform_gen,
                                                          size_t pair_count) {
+  PricingHelper::ValidateUniformGeneratorPointer(uniform_gen,
+                                                 "EuropeanBasket::PriceFixedNAntithetic");
+  PricingHelper::ValidateCountAtLeast(pair_count, 2,
+                                      "EuropeanBasket::PriceFixedNAntithetic", "pair_count");
+
   const std::function<double()> sampler = [this, uniform_gen]() {
     return SinglePathAntitheticPayoffOnly(uniform_gen);
   };
@@ -146,9 +162,14 @@ MonteCarloSummary EuropeanBasket::PriceFixedNAntithetic(UniformGenerator* unifor
 MonteCarloSummary EuropeanBasket::PriceFixedNControlVariate(UniformGenerator* uniform_gen,
                                                              size_t sample_count,
                                                              size_t pilot_count) {
-  if (pilot_count < 2) {
-    throw std::runtime_error("EuropeanBasket::PriceFixedNControlVariate requires pilot_count >= 2");
-  }
+  PricingHelper::ValidateUniformGeneratorPointer(
+      uniform_gen, "EuropeanBasket::PriceFixedNControlVariate");
+  PricingHelper::ValidateCountAtLeast(sample_count, 2,
+                                      "EuropeanBasket::PriceFixedNControlVariate",
+                                      "sample_count");
+  PricingHelper::ValidateCountAtLeast(pilot_count, 2,
+                                      "EuropeanBasket::PriceFixedNControlVariate",
+                                      "pilot_count");
 
   std::vector<double> pilotTarget;
   std::vector<double> pilotControl;
@@ -176,9 +197,12 @@ MonteCarloSummary EuropeanBasket::PriceFixedNControlVariate(UniformGenerator* un
 MonteCarloSummary EuropeanBasket::PriceFixedNCumulative(UniformGenerator* uniform_gen,
                                                          size_t pair_count,
                                                          size_t pilot_count) {
-  if (pilot_count < 2) {
-    throw std::runtime_error("EuropeanBasket::PriceFixedNCumulative requires pilot_count >= 2");
-  }
+  PricingHelper::ValidateUniformGeneratorPointer(uniform_gen,
+                                                 "EuropeanBasket::PriceFixedNCumulative");
+  PricingHelper::ValidateCountAtLeast(pair_count, 2,
+                                      "EuropeanBasket::PriceFixedNCumulative", "pair_count");
+  PricingHelper::ValidateCountAtLeast(pilot_count, 2,
+                                      "EuropeanBasket::PriceFixedNCumulative", "pilot_count");
 
   std::vector<double> pilotTarget;
   std::vector<double> pilotControl;

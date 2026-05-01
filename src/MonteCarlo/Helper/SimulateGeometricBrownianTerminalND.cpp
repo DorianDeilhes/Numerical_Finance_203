@@ -1,6 +1,6 @@
 #include "MonteCarlo/Helper/SimulateGeometricBrownianTerminalND.h"
 
-#include "MonteCarlo/Helper/GeometricBrownianEulerStep.h"
+#include "MonteCarlo/Helper/GeometricBrownianExactStep.h"
 #include "MonteCarlo/Helper/ValidateTimeGrid.h"
 #include "MonteCarlo/SinglePath.h"
 #include "SDE/BrownianND.h"
@@ -38,7 +38,7 @@ std::vector<double> SimulateGeometricBrownianTerminalND(
         throw std::runtime_error("SimulateGeometricBrownianTerminalND failed to retrieve a Brownian path");
       }
       const double increment = path->GetState(nextTime) - path->GetState(currentTime);
-      terminalSpots[i] = GeometricBrownianEulerStep(terminalSpots[i], rate, volatilities[i], dt,
+      terminalSpots[i] = GeometricBrownianExactStep(terminalSpots[i], rate, volatilities[i], dt,
                                                     increment / std::sqrt(dt));
     }
   }

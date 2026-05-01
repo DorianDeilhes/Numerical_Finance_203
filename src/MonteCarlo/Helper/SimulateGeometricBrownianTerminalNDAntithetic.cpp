@@ -1,6 +1,6 @@
 #include "MonteCarlo/Helper/SimulateGeometricBrownianTerminalNDAntithetic.h"
 
-#include "MonteCarlo/Helper/GeometricBrownianEulerStep.h"
+#include "MonteCarlo/Helper/GeometricBrownianExactStep.h"
 #include "MonteCarlo/Helper/ValidateTimeGrid.h"
 #include "MonteCarlo/SinglePath.h"
 #include "SDE/BrownianND.h"
@@ -50,9 +50,9 @@ TerminalSpotsAntitheticPair SimulateGeometricBrownianTerminalNDAntithetic(
       const double increment = path->GetState(nextTime) - path->GetState(currentTime);
       const double shock = increment / sqrtDt;
 
-      result.direct[i] = GeometricBrownianEulerStep(result.direct[i], rate,
+      result.direct[i] = GeometricBrownianExactStep(result.direct[i], rate,
                                                     volatilities[i], dt, shock);
-      result.antithetic[i] = GeometricBrownianEulerStep(result.antithetic[i], rate,
+      result.antithetic[i] = GeometricBrownianExactStep(result.antithetic[i], rate,
                                                         volatilities[i], dt, -shock);
     }
   }

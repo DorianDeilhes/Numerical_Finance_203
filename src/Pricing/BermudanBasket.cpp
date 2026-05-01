@@ -1,12 +1,25 @@
+// Design note for the final report:
+// The Longstaff-Schwarz baseline uses a fixed quadratic basis in the scalar basket
+// state B: (1, B, B^2). A natural extension would be a configurable basis
+// (higher-order polynomials, payoff-based terms, or asset-level states S_i).
+// This was intentionally left out to keep the Bermudan implementation basic,
+// transparent, and aligned with the lecture project scope.
+
 #include "Pricing/BermudanBasket.h"
 
 #include "MonteCarlo/Helper/SimulateGeometricBrownianSpotsAtStepIndicesND.h"
+#include "MonteCarlo/Helper/SimulateGeometricBrownianSpotsAtStepIndicesNDAntithetic.h"
+#include "Pricing/Helper/ApplyControlVariate.h"
 #include "Pricing/Helper/BasketValue.h"
 #include "Pricing/Helper/BermudanImmediateExerciseCall.h"
+#include "Pricing/Helper/BuildLoadingMatrixFromCorrelation.h"
 #include "Pricing/Helper/ConvertExerciseDatesToStepIndices.h"
+#include "Pricing/Helper/EstimateControlVariateBeta.h"
 #include "Pricing/Helper/EstimateQuadraticContinuationCoefficients.h"
 #include "Pricing/Helper/EvaluateQuadraticContinuation.h"
+#include "Pricing/Helper/KnownMeanDiscountedBasketValue.h"
 #include "Pricing/Helper/ValidateBermudanBasketInputs.h"
+#include "Pricing/Helper/ValidatePricingMethodInputs.h"
 
 #include <array>
 #include <cmath>
@@ -30,9 +43,11 @@ BermudanBasket::BermudanBasket(const std::vector<double>& spot_prices,
       maturity_(maturity),
       risk_free_rate_(risk_free_rate),
       correlation_matrix_(correlation_matrix),
+      loading_matrix_(),
       exercise_dates_(exercise_dates),
       nb_steps_(nb_steps) {
   ValidateInputs();
+  loading_matrix_ = PricingHelper::BuildLoadingMatrixFromCorrelation(correlation_matrix_);
 }
 
 void BermudanBasket::ValidateInputs() {
@@ -50,7 +65,7 @@ std::vector<double> BermudanBasket::SimulateBasketStatesAtExerciseDates(
   // Simulate one ND path and retain spots only at requested exercise steps.
   const std::vector<std::vector<double>> spots_by_exercise =
       MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesND(
-          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &correlation_matrix_, 0.0,
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
           maturity_, nb_steps_, step_indices);
 
   // Collapse ND spot vectors to a scalar basket state per exercise date.
@@ -62,21 +77,38 @@ std::vector<double> BermudanBasket::SimulateBasketStatesAtExerciseDates(
   return basket_states;
 }
 
-MonteCarloSummary BermudanBasket::PriceFixedN(UniformGenerator* uniform_gen,
-                                              size_t path_count) {
-  // Stage A: input guards.
-  if (uniform_gen == nullptr) {
-    throw std::runtime_error("BermudanBasket::PriceFixedN requires a non-null uniform generator");
-  }
-  if (path_count < 2) {
-    throw std::runtime_error("BermudanBasket::PriceFixedN requires path_count >= 2");
+std::pair<std::vector<double>, std::vector<double>>
+BermudanBasket::SimulateBasketStatesAntitheticAtExerciseDates(UniformGenerator* uniform_gen) {
+  const std::vector<size_t> step_indices =
+      PricingHelper::ConvertExerciseDatesToStepIndices(exercise_dates_, maturity_, nb_steps_);
+
+  const MonteCarloHelper::ExerciseSpotsAntitheticPair spots_by_exercise =
+      MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesNDAntithetic(
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
+          maturity_, nb_steps_, step_indices);
+
+  std::vector<double> direct_basket_states;
+  std::vector<double> antithetic_basket_states;
+  direct_basket_states.reserve(spots_by_exercise.direct.size());
+  antithetic_basket_states.reserve(spots_by_exercise.antithetic.size());
+
+  for (size_t k = 0; k < spots_by_exercise.direct.size(); ++k) {
+    direct_basket_states.push_back(PricingHelper::BasketValue(spots_by_exercise.direct[k],
+                                                              weights_));
+    antithetic_basket_states.push_back(PricingHelper::BasketValue(
+        spots_by_exercise.antithetic[k], weights_));
   }
 
+  return std::make_pair(direct_basket_states, antithetic_basket_states);
+}
+
+std::vector<std::vector<double>> BermudanBasket::SimulateBasketStatesByDate(
+    UniformGenerator* uniform_gen,
+    size_t path_count) {
   const size_t exercise_count = exercise_dates_.size();
   std::vector<std::vector<double>> basket_states_by_date(
       exercise_count, std::vector<double>(path_count, 0.0));
 
-  // Stage B: forward simulation cache (basket state at every exercise date for every path).
   for (size_t path = 0; path < path_count; ++path) {
     const std::vector<double> basket_states = SimulateBasketStatesAtExerciseDates(uniform_gen);
     for (size_t k = 0; k < exercise_count; ++k) {
@@ -84,7 +116,50 @@ MonteCarloSummary BermudanBasket::PriceFixedN(UniformGenerator* uniform_gen,
     }
   }
 
-  // Stage C: terminal condition at maturity.
+  return basket_states_by_date;
+}
+
+std::vector<std::vector<double>> BermudanBasket::SimulateAntitheticBasketStatesByDate(
+    UniformGenerator* uniform_gen,
+    size_t pair_count) {
+  const size_t exercise_count = exercise_dates_.size();
+  std::vector<std::vector<double>> basket_states_by_date(
+      exercise_count, std::vector<double>(2 * pair_count, 0.0));
+
+  for (size_t j = 0; j < pair_count; ++j) {
+    const std::pair<std::vector<double>, std::vector<double>> basket_pair =
+        SimulateBasketStatesAntitheticAtExerciseDates(uniform_gen);
+
+    for (size_t k = 0; k < exercise_count; ++k) {
+      basket_states_by_date[k][j] = basket_pair.first[k];
+      basket_states_by_date[k][pair_count + j] = basket_pair.second[k];
+    }
+  }
+
+  return basket_states_by_date;
+}
+
+std::vector<double> BermudanBasket::ComputeDiscountedPathValues(
+    const std::vector<std::vector<double>>& basket_states_by_date) {
+  const size_t exercise_count = exercise_dates_.size();
+  if (basket_states_by_date.size() != exercise_count) {
+    throw std::runtime_error(
+        "BermudanBasket::ComputeDiscountedPathValues requires one row per exercise date");
+  }
+  if (basket_states_by_date.empty() || basket_states_by_date[0].empty()) {
+    throw std::runtime_error(
+        "BermudanBasket::ComputeDiscountedPathValues requires non-empty path states");
+  }
+
+  const size_t path_count = basket_states_by_date[0].size();
+  for (size_t k = 1; k < basket_states_by_date.size(); ++k) {
+    if (basket_states_by_date[k].size() != path_count) {
+      throw std::runtime_error(
+          "BermudanBasket::ComputeDiscountedPathValues requires rectangular path states");
+    }
+  }
+
+  // Terminal condition: V_T = f(S_T).
   const size_t maturity_index = exercise_count - 1;
   std::vector<double> values_next(path_count, 0.0);
   for (size_t path = 0; path < path_count; ++path) {
@@ -92,7 +167,7 @@ MonteCarloSummary BermudanBasket::PriceFixedN(UniformGenerator* uniform_gen,
         basket_states_by_date[maturity_index][path], strike_);
   }
 
-  // Stage D: Longstaff-Schwarz backward induction over exercise dates.
+  // Longstaff-Schwarz backward induction over exercise dates.
   for (size_t k = exercise_count - 1; k-- > 0;) {
     const double dt = exercise_dates_[k + 1] - exercise_dates_[k];
     const double discount_factor = std::exp(-risk_free_rate_ * dt);
@@ -102,12 +177,12 @@ MonteCarloSummary BermudanBasket::PriceFixedN(UniformGenerator* uniform_gen,
     states_itm.reserve(path_count);
     targets_itm.reserve(path_count);
 
-    for (size_t path = 0; path < path_count; ++path) {
-      const double basket_state = basket_states_by_date[k][path];
+    for (size_t j = 0; j < path_count; ++j) {
+      const double basket_state = basket_states_by_date[k][j];
       const double immediate = PricingHelper::BermudanImmediateExerciseCall(basket_state, strike_);
       if (immediate > 0.0) {
         states_itm.push_back(basket_state);
-        targets_itm.push_back(discount_factor * values_next[path]);
+        targets_itm.push_back(discount_factor * values_next[j]);
       }
     }
 
@@ -116,38 +191,200 @@ MonteCarloSummary BermudanBasket::PriceFixedN(UniformGenerator* uniform_gen,
     const bool has_regression = PricingHelper::EstimateQuadraticContinuationCoefficients(
         states_itm, targets_itm, &coefficients);
 
-    std::vector<double> values_current(path_count, 0.0);
-    for (size_t path = 0; path < path_count; ++path) {
-      const double basket_state = basket_states_by_date[k][path];
-      const double immediate = PricingHelper::BermudanImmediateExerciseCall(basket_state, strike_);
-      const double continuation_realized = discount_factor * values_next[path];
+    double fallback_continuation = 0.0;
+    const bool has_fallback_continuation = !targets_itm.empty();
+    if (has_fallback_continuation) {
+      for (size_t i = 0; i < targets_itm.size(); ++i) {
+        fallback_continuation += targets_itm[i];
+      }
+      fallback_continuation /= static_cast<double>(targets_itm.size());
+    }
 
-      if (immediate <= 0.0 || !has_regression) {
-        values_current[path] = continuation_realized;
+    std::vector<double> values_current(path_count, 0.0);
+    for (size_t j = 0; j < path_count; ++j) {
+      const double basket_state = basket_states_by_date[k][j];
+      const double immediate = PricingHelper::BermudanImmediateExerciseCall(basket_state, strike_);
+      const double continuation_realized = discount_factor * values_next[j];
+
+      if (immediate <= 0.0) {
+        values_current[j] = continuation_realized;
         continue;
       }
 
-      const double continuation_estimated =
-          PricingHelper::EvaluateQuadraticContinuation(basket_state, coefficients);
-        // Optimal Bermudan decision at t_k: exercise now or continue.
-        values_current[path] =
-          (immediate >= continuation_estimated) ? immediate : continuation_realized;
+      if (!has_regression && !has_fallback_continuation) {
+        values_current[j] = continuation_realized;
+        continue;
+      }
+
+      const double continuation_estimated = has_regression
+          ? PricingHelper::EvaluateQuadraticContinuation(basket_state, coefficients)
+          : fallback_continuation;
+
+      // A_j_k is the lecture exercise event at date t_k for path j.
+      const bool A_j_k = (immediate >= continuation_estimated);
+      values_current[j] = A_j_k ? immediate : continuation_realized;
     }
 
     values_next.swap(values_current);
   }
 
-      // Stage E: discount to time 0 and summarize with Monte Carlo statistics.
+  // X_j = exp(-r * t_first) * V_{t_first}^j.
   const double first_discount = std::exp(-risk_free_rate_ * exercise_dates_.front());
-  std::vector<double> discounted_path_values(path_count, 0.0);
-  for (size_t path = 0; path < path_count; ++path) {
-    discounted_path_values[path] = first_discount * values_next[path];
+  std::vector<double> X_j(path_count, 0.0);
+  for (size_t j = 0; j < path_count; ++j) {
+    X_j[j] = first_discount * values_next[j];
   }
 
+  return X_j;
+}
+
+std::vector<double> BermudanBasket::ComputeDiscountedTerminalBasketControls(
+    const std::vector<std::vector<double>>& basket_states_by_date) {
+  const size_t exercise_count = exercise_dates_.size();
+  if (basket_states_by_date.size() != exercise_count) {
+    throw std::runtime_error(
+        "BermudanBasket::ComputeDiscountedTerminalBasketControls requires one row per exercise date");
+  }
+  if (basket_states_by_date.empty() || basket_states_by_date.back().empty()) {
+    throw std::runtime_error(
+        "BermudanBasket::ComputeDiscountedTerminalBasketControls requires non-empty path states");
+  }
+
+  const size_t path_count = basket_states_by_date.back().size();
+  const double maturity_discount = std::exp(-risk_free_rate_ * maturity_);
+  std::vector<double> Y_j(path_count, 0.0);
+  for (size_t j = 0; j < path_count; ++j) {
+    Y_j[j] = maturity_discount * basket_states_by_date.back()[j];
+  }
+  return Y_j;
+}
+
+std::pair<std::vector<double>, std::vector<double>> BermudanBasket::BuildPathValuesAndControls(
+    UniformGenerator* uniform_gen,
+    size_t path_count) {
+  const std::vector<std::vector<double>> basket_states_by_date =
+      SimulateBasketStatesByDate(uniform_gen, path_count);
+  const std::vector<double> X_j = ComputeDiscountedPathValues(basket_states_by_date);
+  const std::vector<double> Y_j =
+      ComputeDiscountedTerminalBasketControls(basket_states_by_date);
+
+  return std::make_pair(X_j, Y_j);
+}
+
+std::pair<std::vector<double>, std::vector<double>>
+BermudanBasket::BuildAntitheticPairValuesAndControls(UniformGenerator* uniform_gen,
+                                                     size_t pair_count) {
+  const std::vector<std::vector<double>> basket_states_by_date =
+      SimulateAntitheticBasketStatesByDate(uniform_gen, pair_count);
+  const std::vector<double> X_j = ComputeDiscountedPathValues(basket_states_by_date);
+  const std::vector<double> Y_j =
+      ComputeDiscountedTerminalBasketControls(basket_states_by_date);
+
+  std::vector<double> chi_j(pair_count, 0.0);
+  std::vector<double> Y_chi_j(pair_count, 0.0);
+  for (size_t j = 0; j < pair_count; ++j) {
+    chi_j[j] = 0.5 * (X_j[j] + X_j[pair_count + j]);
+    Y_chi_j[j] = 0.5 * (Y_j[j] + Y_j[pair_count + j]);
+  }
+
+  return std::make_pair(chi_j, Y_chi_j);
+}
+
+MonteCarloSummary BermudanBasket::SummarizeSamples(const std::vector<double>& samples) {
   size_t cursor = 0;
-  const std::function<double()> sampler = [&discounted_path_values, &cursor]() {
-    return discounted_path_values[cursor++];
+  const std::function<double()> sampler = [&samples, &cursor]() {
+    return samples[cursor++];
   };
 
-  return MonteCarloCore::RunFixedN(sampler, path_count, 0.95);
+  return MonteCarloCore::RunFixedN(sampler, samples.size(), 0.95);
+}
+
+MonteCarloSummary BermudanBasket::PriceFixedN(UniformGenerator* uniform_gen,
+                                              size_t path_count) {
+  PricingHelper::ValidateUniformGeneratorPointer(uniform_gen, "BermudanBasket::PriceFixedN");
+  PricingHelper::ValidateCountAtLeast(path_count, 2, "BermudanBasket::PriceFixedN",
+                                      "path_count");
+
+  const std::vector<std::vector<double>> basket_states_by_date =
+      SimulateBasketStatesByDate(uniform_gen, path_count);
+  const std::vector<double> X_j = ComputeDiscountedPathValues(basket_states_by_date);
+
+  return SummarizeSamples(X_j);
+}
+
+MonteCarloSummary BermudanBasket::PriceFixedNControlVariate(UniformGenerator* uniform_gen,
+                                                            size_t path_count,
+                                                            size_t pilot_count) {
+  PricingHelper::ValidateUniformGeneratorPointer(
+      uniform_gen, "BermudanBasket::PriceFixedNControlVariate");
+  PricingHelper::ValidateCountAtLeast(path_count, 2,
+                                      "BermudanBasket::PriceFixedNControlVariate",
+                                      "path_count");
+  PricingHelper::ValidateCountAtLeast(pilot_count, 2,
+                                      "BermudanBasket::PriceFixedNControlVariate",
+                                      "pilot_count");
+
+  const std::pair<std::vector<double>, std::vector<double>> pilot_samples =
+      BuildPathValuesAndControls(uniform_gen, pilot_count);
+  const double beta = PricingHelper::EstimateControlVariateBeta(pilot_samples.first,
+                                                                pilot_samples.second);
+  const double control_mean =
+      PricingHelper::KnownMeanDiscountedBasketValue(spot_prices_, weights_);
+
+  const std::pair<std::vector<double>, std::vector<double>> main_samples =
+      BuildPathValuesAndControls(uniform_gen, path_count);
+
+  std::vector<double> X_j_cv(path_count, 0.0);
+  for (size_t j = 0; j < path_count; ++j) {
+    X_j_cv[j] = PricingHelper::ApplyControlVariate(main_samples.first[j],
+                                                   main_samples.second[j],
+                                                   control_mean,
+                                                   beta);
+  }
+
+  return SummarizeSamples(X_j_cv);
+}
+
+MonteCarloSummary BermudanBasket::PriceFixedNAntithetic(UniformGenerator* uniform_gen,
+                                                        size_t pair_count) {
+  PricingHelper::ValidateUniformGeneratorPointer(uniform_gen,
+                                                 "BermudanBasket::PriceFixedNAntithetic");
+  PricingHelper::ValidateCountAtLeast(pair_count, 2,
+                                      "BermudanBasket::PriceFixedNAntithetic", "pair_count");
+
+  const std::pair<std::vector<double>, std::vector<double>> pair_samples =
+      BuildAntitheticPairValuesAndControls(uniform_gen, pair_count);
+
+  return SummarizeSamples(pair_samples.first);
+}
+
+MonteCarloSummary BermudanBasket::PriceFixedNCumulative(UniformGenerator* uniform_gen,
+                                                        size_t pair_count,
+                                                        size_t pilot_count) {
+  PricingHelper::ValidateUniformGeneratorPointer(uniform_gen,
+                                                 "BermudanBasket::PriceFixedNCumulative");
+  PricingHelper::ValidateCountAtLeast(pair_count, 2,
+                                      "BermudanBasket::PriceFixedNCumulative", "pair_count");
+  PricingHelper::ValidateCountAtLeast(pilot_count, 2,
+                                      "BermudanBasket::PriceFixedNCumulative", "pilot_count");
+
+  const std::pair<std::vector<double>, std::vector<double>> pilot_samples =
+      BuildAntitheticPairValuesAndControls(uniform_gen, pilot_count);
+  const double beta = PricingHelper::EstimateControlVariateBeta(pilot_samples.first,
+                                                                pilot_samples.second);
+  const double control_mean =
+      PricingHelper::KnownMeanDiscountedBasketValue(spot_prices_, weights_);
+
+  const std::pair<std::vector<double>, std::vector<double>> main_samples =
+      BuildAntitheticPairValuesAndControls(uniform_gen, pair_count);
+
+  std::vector<double> chi_j_cv(pair_count, 0.0);
+  for (size_t j = 0; j < pair_count; ++j) {
+    chi_j_cv[j] = PricingHelper::ApplyControlVariate(main_samples.first[j],
+                                                     main_samples.second[j],
+                                                     control_mean,
+                                                     beta);
+  }
+
+  return SummarizeSamples(chi_j_cv);
 }

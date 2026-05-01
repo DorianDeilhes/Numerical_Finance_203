@@ -4,6 +4,7 @@
 #include <cmath>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -167,9 +168,94 @@ void TestValidationErrors() {
                           {{0.95, 0.3}, {0.3, 1.0}});
   });
 
+  // Non-positive-semidefinite correlation matrix.
+  ExpectThrows("Should reject non-PSD correlation matrix", []() {
+    EuropeanBasket basket({100.0, 100.0, 100.0}, {0.2, 0.2, 0.2},
+                          {0.3, 0.3, 0.4}, 100.0, 1.0, 0.05,
+                          {{1.0, 0.9, 0.9},
+                           {0.9, 1.0, -0.9},
+                           {0.9, -0.9, 1.0}});
+  });
+
+  // Zero simulation step count.
+  ExpectThrows("Should reject nb_steps == 0", []() {
+    EuropeanBasket basket({100.0}, {0.2}, {1.0}, 100.0, 1.0, 0.05, {{1.0}}, 0);
+  });
+
   // Zero dimension.
   ExpectThrows("Should reject zero dimension", []() {
     EuropeanBasket basket({}, {}, {}, 100.0, 1.0, 0.05, {});
+  });
+
+  // Non-finite spot price.
+  ExpectThrows("Should reject NaN spot price", []() {
+    EuropeanBasket basket({std::numeric_limits<double>::quiet_NaN()}, {0.2}, {1.0},
+                          100.0, 1.0, 0.05, {{1.0}});
+  });
+
+  // Non-finite volatility.
+  ExpectThrows("Should reject infinite volatility", []() {
+    EuropeanBasket basket({100.0}, {std::numeric_limits<double>::infinity()}, {1.0},
+                          100.0, 1.0, 0.05, {{1.0}});
+  });
+
+  // Non-finite weight.
+  ExpectThrows("Should reject NaN weight", []() {
+    EuropeanBasket basket({100.0}, {0.2}, {std::numeric_limits<double>::quiet_NaN()},
+                          100.0, 1.0, 0.05, {{1.0}});
+  });
+
+  // Non-finite scalar inputs.
+  ExpectThrows("Should reject infinite strike", []() {
+    EuropeanBasket basket({100.0}, {0.2}, {1.0},
+                          std::numeric_limits<double>::infinity(), 1.0, 0.05, {{1.0}});
+  });
+
+  ExpectThrows("Should reject NaN risk-free rate", []() {
+    EuropeanBasket basket({100.0}, {0.2}, {1.0}, 100.0, 1.0,
+                          std::numeric_limits<double>::quiet_NaN(), {{1.0}});
+  });
+
+  // Wrong matrix shape and non-finite matrix entry.
+  ExpectThrows("Should reject non-square correlation matrix", []() {
+    EuropeanBasket basket({100.0, 100.0}, {0.2, 0.2}, {0.5, 0.5},
+                          100.0, 1.0, 0.05, {{1.0}, {0.2, 1.0}});
+  });
+
+  ExpectThrows("Should reject NaN correlation entry", []() {
+    EuropeanBasket basket({100.0, 100.0}, {0.2, 0.2}, {0.5, 0.5},
+                          100.0, 1.0, 0.05,
+                          {{1.0, std::numeric_limits<double>::quiet_NaN()},
+                           {std::numeric_limits<double>::quiet_NaN(), 1.0}});
+  });
+}
+
+void TestPublicPricingValidationErrors() {
+  EuropeanBasket basket({100.0}, {0.2}, {1.0}, 100.0, 1.0, 0.05, {{1.0}});
+  EcuyerCombined uniform(12345, 67890);
+
+  ExpectThrows("Should reject null generator in PriceFixedN", [&]() {
+    (void)basket.PriceFixedN(nullptr, 10);
+  });
+
+  ExpectThrows("Should reject sample count < 2 in PriceFixedN", [&]() {
+    (void)basket.PriceFixedN(&uniform, 1);
+  });
+
+  ExpectThrows("Should reject infinite epsilon in PriceFixedPrecision", [&]() {
+    (void)basket.PriceFixedPrecision(&uniform, std::numeric_limits<double>::infinity(), 10, 20);
+  });
+
+  ExpectThrows("Should reject pair count < 2 in antithetic", [&]() {
+    (void)basket.PriceFixedNAntithetic(&uniform, 1);
+  });
+
+  ExpectThrows("Should reject sample count < 2 in control variate", [&]() {
+    (void)basket.PriceFixedNControlVariate(&uniform, 1, 10);
+  });
+
+  ExpectThrows("Should reject pilot count < 2 in cumulative", [&]() {
+    (void)basket.PriceFixedNCumulative(&uniform, 10, 1);
   });
 }
 
@@ -186,6 +272,7 @@ int main() {
     TestReproducibility();
     TestFixedPrecisionMode();
     TestValidationErrors();
+    TestPublicPricingValidationErrors();
 
     std::cout << "[BASKET TEST] All checks passed." << std::endl;
   } catch (const std::exception& exception) {

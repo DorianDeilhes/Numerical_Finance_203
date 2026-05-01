@@ -58,6 +58,7 @@ class EuropeanBasket {
   double maturity_;
   double risk_free_rate_;
   std::vector<std::vector<double>> correlation_matrix_;
+  std::vector<std::vector<double>> loading_matrix_;
   size_t nb_steps_;  // Number of time steps for SDE discretization.
 
   // Single path payoff: simulate one trajectory, return discounted payoff.

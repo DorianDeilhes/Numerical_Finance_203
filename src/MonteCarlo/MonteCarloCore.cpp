@@ -69,8 +69,8 @@ MonteCarloSummary MonteCarloCore::RunFixedPrecision(
     throw std::runtime_error(
         "MonteCarloCore::RunFixedPrecision requires a valid sample generator");
   }
-  if (!(epsilon > 0.0)) {
-    throw std::runtime_error("MonteCarloCore::RunFixedPrecision requires epsilon > 0");
+  if (!(epsilon > 0.0) || !std::isfinite(epsilon)) {
+    throw std::runtime_error("MonteCarloCore::RunFixedPrecision requires finite epsilon > 0");
   }
   if (minSamples < 2) {
     throw std::runtime_error("MonteCarloCore::RunFixedPrecision requires minSamples >= 2");
