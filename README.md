@@ -1,13 +1,19 @@
-# Random Number Generation Library (C++)
+# Numerical Finance Basket Option Pricing Project (C++)
 
-Small C++ library of pseudo-random generators for numerical finance coursework.
+Clean C++ project for numerical finance coursework.
 
 It provides:
 - uniform pseudo-random generators,
+- Halton quasi-random numbers,
 - discrete distribution generators,
 - continuous distribution generators,
 - a bivariate normal generator,
-- test programs to verify behavior and empirical moments.
+- multidimensional Black-Scholes simulation,
+- European basket option pricing,
+- Bermudan basket option pricing with Longstaff-Schwarz,
+- variance reduction methods,
+- public professor-facing scenario programs,
+- CTest programs to verify behavior.
 
 ## Project Structure
 
@@ -17,13 +23,24 @@ It provides:
 |  |- RandomGenerator.h
 |  |- UniformGenerator/
 |  |- DiscreteGenerator/
-|  `- ContinuousGenerator/
+|  |- ContinuousGenerator/
+|  |- MonteCarlo/
+|  |- Pricing/
+|  |- SDE/
+|  `- PDE/
 |- src/
 |  |- RandomGenerator.cpp
 |  |- UniformGenerator/
 |  |- DiscreteGenerator/
-|  `- ContinuousGenerator/
+|  |- ContinuousGenerator/
+|  |- MonteCarlo/
+|  |- Pricing/
+|  |- SDE/
+|  `- PDE/
 |- interactive_sim.cpp
+|- professor_smoke_test.cpp
+|- professor_editable_scenario.cpp
+|- report_results.cpp
 |- CMakeLists.txt
 `- tests/
 ```
@@ -45,6 +62,12 @@ It provides:
     - `Exponential`
     - `Normal`
 - `BivariateNormal` (uses `Normal` internally)
+
+Pricing modules:
+- `EuropeanBasket`
+- `BermudanBasket`
+- `MonteCarloCore`
+- variance reduction helpers for quasi-random, control variate, and antithetic methods
 
 ## Prerequisites
 
@@ -69,6 +92,10 @@ command -v make || command -v mingw32-make || where nmake
 
 This project uses CMake as the primary build system.
 
+The CMake architecture compiles all shared source files once into the static library
+`numerical_finance`, then links each executable to that library. This keeps the build
+lighter than recompiling the full source tree for every test and demo executable.
+
 ### Windows (Git Bash + g++)
 
 Use this exact sequence from the project root:
@@ -76,7 +103,7 @@ Use this exact sequence from the project root:
 ```bash
 rm -rf build
 cmake -S . -B build -G "Unix Makefiles"
-cmake --build build -j
+cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
 ```
 
@@ -86,6 +113,14 @@ Run the simulator:
 ./build/interactive_sim.exe
 ```
 
+Run professor-facing examples:
+
+```bash
+./build/professor_smoke_test.exe
+./build/professor_editable_scenario.exe
+./build/report_results.exe
+```
+
 ### Linux/macOS
 
 From the project root:
@@ -93,7 +128,7 @@ From the project root:
 ```bash
 rm -rf build
 cmake -S . -B build
-cmake --build build -j
+cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
 ```
 
@@ -101,6 +136,32 @@ Run the simulator:
 
 ```bash
 ./build/interactive_sim
+```
+
+Run professor-facing examples:
+
+```bash
+./build/professor_smoke_test
+./build/professor_editable_scenario
+./build/report_results
+```
+
+### Build Parallelism Note
+
+The command `cmake --build build --parallel 2` limits compilation to 2 parallel jobs.
+This is safer on laptops with limited RAM.
+
+Avoid using plain `-j` without a number, because it can use too many jobs and consume several GB of RAM.
+If the computer is still low on memory, use the fully sequential command:
+
+```bash
+cmake --build build
+```
+
+To build only one executable, use:
+
+```bash
+cmake --build build --target professor_editable_scenario
 ```
 
 ### If CMake Cannot Find a Make Program on Windows
@@ -189,6 +250,7 @@ Fix:
 ### Uniform
 - `LinearCongruential(seed, a, c, m)`
 - `EcuyerCombined(seed1, seed2)`
+- `HaltonQuasiRandom(dimension, useShift, shiftSeed)`
 
 ### Discrete
 - `HeadTail(uniformGen)`
@@ -231,15 +293,35 @@ int main() {
 
 ## Tests
 
-The `tests/` directory contains several focused and aggregate test programs, including:
-- `test_all_fixed.cpp`
-- `test_all_generators.cpp`
-- `test_continuous.cpp`
-- `test_discrete.cpp`
-- `test_lcg.cpp`
-- `test_ecuyer.cpp`
+The CMake test suite registers these CTest targets:
 
-Compile any test file by replacing the test source in the manual compile command.
+- `comprehensive_tests`
+- `sde_tests`
+- `mc_core_tests`
+- `basket_tests`
+- `phase3_tests`
+- `bermudan_tests`
+- `phase6_stress_tests`
+- `professor_smoke_test`
+
+Run all tests with:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+Run one test group with:
+
+```bash
+ctest --test-dir build -R basket_tests --output-on-failure
+```
+
+## Main Executables
+
+- `interactive_sim`: console simulator with strict input parsing.
+- `professor_smoke_test`: stable public workflow check.
+- `professor_editable_scenario`: easiest file for a professor/user to modify.
+- `report_results`: generates report-ready CSV output locally.
 
 ## Notes
 

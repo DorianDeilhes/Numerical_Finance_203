@@ -2,198 +2,71 @@ cmake_minimum_required(VERSION 3.16)
 
 project(RandomNumberGeneration LANGUAGES CXX)
 
-# The project originally used C++11, but we can safely use C++11 or newer
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Gather all generator implementation files
-file(GLOB_RECURSE RNG_SOURCES CONFIGURE_DEPENDS
+# ----------------------------------------------------------------------
+# Shared project library
+# ----------------------------------------------------------------------
+# All implementation files under src/ are compiled once into this library.
+# Executables and tests then link to it instead of recompiling the whole project.
+file(GLOB_RECURSE PROJECT_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
-# ----------------------------------------------------------------------
-# Target 1: The Interactive Simulator
-# ----------------------------------------------------------------------
-add_executable(interactive_sim
-    interactive_sim.cpp
-    ${RNG_SOURCES}
+add_library(numerical_finance STATIC
+    ${PROJECT_SOURCES}
 )
 
-target_include_directories(interactive_sim PRIVATE
+target_include_directories(numerical_finance PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-target_compile_options(interactive_sim PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
+function(apply_project_warnings target_name)
+    if(MSVC)
+        target_compile_options(${target_name} PRIVATE /W4)
+    else()
+        target_compile_options(${target_name} PRIVATE -Wall -Wextra -pedantic)
+    endif()
+endfunction()
 
-# ----------------------------------------------------------------------
-# Target 1b: Professor Smoke Test
-# ----------------------------------------------------------------------
-add_executable(professor_smoke_test
-    professor_smoke_test.cpp
-    ${RNG_SOURCES}
-)
+apply_project_warnings(numerical_finance)
 
-target_include_directories(professor_smoke_test PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(professor_smoke_test PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
+function(add_project_executable target_name source_file)
+    add_executable(${target_name}
+        ${source_file}
+    )
+    target_link_libraries(${target_name} PRIVATE
+        numerical_finance
+    )
+    apply_project_warnings(${target_name})
+endfunction()
 
 # ----------------------------------------------------------------------
-# Target 1c: Professor Editable Scenario
+# User-facing executables
 # ----------------------------------------------------------------------
-add_executable(professor_editable_scenario
-    professor_editable_scenario.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(professor_editable_scenario PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(professor_editable_scenario PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
+add_project_executable(interactive_sim interactive_sim.cpp)
+add_project_executable(professor_smoke_test professor_smoke_test.cpp)
+add_project_executable(professor_editable_scenario professor_editable_scenario.cpp)
+add_project_executable(report_results report_results.cpp)
 
 # ----------------------------------------------------------------------
-# Target 1d: Report Results Generator
+# Test executables
 # ----------------------------------------------------------------------
-add_executable(report_results
-    report_results.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(report_results PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(report_results PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
+add_project_executable(test_all_fixed tests/test_all_fixed.cpp)
+add_project_executable(test_sde_fixed tests/test_sde_fixed.cpp)
+add_project_executable(test_mc_core tests/test_mc_core.cpp)
+add_project_executable(test_basket tests/test_basket.cpp)
+add_project_executable(test_phase3 tests/test_phase3.cpp)
+add_project_executable(test_bermudan tests/test_bermudan.cpp)
+add_project_executable(test_phase6_stress tests/test_phase6_stress.cpp)
 
 # ----------------------------------------------------------------------
-# Target 2: Comprehensive Test Suite
+# CTest registration
 # ----------------------------------------------------------------------
-add_executable(test_all_fixed
-    tests/test_all_fixed.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(test_all_fixed PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(test_all_fixed PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-add_executable(test_sde_fixed
-    tests/test_sde_fixed.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(test_sde_fixed PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(test_sde_fixed PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-add_executable(test_mc_core
-    tests/test_mc_core.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(test_mc_core PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(test_mc_core PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-add_executable(test_basket
-    tests/test_basket.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(test_basket PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(test_basket PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-add_executable(test_phase3
-    tests/test_phase3.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(test_phase3 PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(test_phase3 PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-add_executable(test_bermudan
-    tests/test_bermudan.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(test_bermudan PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(test_bermudan PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-add_executable(test_phase6_stress
-    tests/test_phase6_stress.cpp
-    ${RNG_SOURCES}
-)
-
-target_include_directories(test_phase6_stress PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
-
-target_compile_options(test_phase6_stress PRIVATE
-    -Wall
-    -Wextra
-    -pedantic
-)
-
-# Enable testing via CTest (so 'make test' is natively supported)
 enable_testing()
+
 add_test(NAME comprehensive_tests COMMAND test_all_fixed)
 add_test(NAME sde_tests COMMAND test_sde_fixed)
 add_test(NAME mc_core_tests COMMAND test_mc_core)
