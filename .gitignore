@@ -1,34 +1,90 @@
-# Compiled objects
-*.o
+# ----------------------------------------------------------------------
+# Private/local project material
+# ----------------------------------------------------------------------
+information/
+tmp/
+temp/
+*.tmp
+*.temp
+temp_compiler_output.txt
 
-# Executables
+# ----------------------------------------------------------------------
+# Generated report/result artifacts
+# Keep the source programs tracked, but regenerate their outputs locally.
+# ----------------------------------------------------------------------
+report_results.csv
+*.aux
+*.log
+*.pdf
+
+# ----------------------------------------------------------------------
+# CMake and build directories
+# ----------------------------------------------------------------------
+build/
+build-*/
+cmake-build-*/
+out/
+bin/
+obj/
+CMakeCache.txt
+CMakeFiles/
+Testing/
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+Makefile
+
+# ----------------------------------------------------------------------
+# Compiled objects, libraries, and debug files
+# ----------------------------------------------------------------------
+*.o
+*.obj
+*.lo
+*.a
+*.lib
+*.so
+*.so.*
+*.dll
+*.dylib
+*.pdb
+*.ilk
+*.idb
+*.gcda
+*.gcno
+*.gcov
+
+# ----------------------------------------------------------------------
+# Executables generated from project targets
+# ----------------------------------------------------------------------
 *.exe
 *.out
 *.app
-interactive_sim
-test_all_fixed
-tests/test_all_fixed
+/interactive_sim
+/professor_smoke_test
+/professor_editable_scenario
+/report_results
+/test_all_fixed
+/test_sde_fixed
+/test_mc_core
+/test_basket
+/test_phase3
+/test_bermudan
+/test_phase6_stress
+/tests/test_all_fixed
 
-# Logs
-*.log
-temp_compiler_output.txt
-
-# CMake
-build/
-CMakeCache.txt
-CMakeFiles/
-cmake_install.cmake
-Makefile
-compile_commands.json
-
-# IDE
+# ----------------------------------------------------------------------
+# IDE/editor local files
+# ----------------------------------------------------------------------
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# Local project notes
-information/
-tmp/session_artifacts/
-
+# ----------------------------------------------------------------------
 # OS generated files
+# ----------------------------------------------------------------------
 .DS_Store
 Thumbs.db
+desktop.ini
