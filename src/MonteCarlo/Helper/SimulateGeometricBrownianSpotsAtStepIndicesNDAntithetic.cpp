@@ -15,6 +15,7 @@ ExerciseSpotsAntitheticPair SimulateGeometricBrownianSpotsAtStepIndicesNDAntithe
     const std::vector<double>& spot_prices,
     const std::vector<double>& volatilities,
     double rate,
+    const std::vector<double>& dividend_yields,
     std::vector<std::vector<double>>* loading_matrix,
     double start_time,
     double end_time,
@@ -25,6 +26,10 @@ ExerciseSpotsAntitheticPair SimulateGeometricBrownianSpotsAtStepIndicesNDAntithe
   if (spot_prices.size() != volatilities.size()) {
     throw std::runtime_error(
         "SimulateGeometricBrownianSpotsAtStepIndicesNDAntithetic requires matching spot and volatility sizes");
+  }
+  if (dividend_yields.size() != spot_prices.size()) {
+    throw std::runtime_error(
+        "SimulateGeometricBrownianSpotsAtStepIndicesNDAntithetic requires matching dividend yield and spot sizes");
   }
   if (step_indices.empty()) {
     throw std::runtime_error(
@@ -82,9 +87,9 @@ ExerciseSpotsAntitheticPair SimulateGeometricBrownianSpotsAtStepIndicesNDAntithe
       const double shock = increment / sqrt_dt;
 
       direct_spots[i] = GeometricBrownianExactStep(direct_spots[i], rate, volatilities[i],
-                                                   dt, shock);
+                                                   dt, shock, dividend_yields[i]);
       antithetic_spots[i] = GeometricBrownianExactStep(antithetic_spots[i], rate,
-                                                       volatilities[i], dt, -shock);
+                                                       volatilities[i], dt, -shock, dividend_yields[i]);
     }
 
     const size_t one_based_step = step + 1;

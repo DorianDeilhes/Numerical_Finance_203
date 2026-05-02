@@ -22,7 +22,8 @@ EuropeanBasket::EuropeanBasket(const std::vector<double>& spot_prices,
                                double maturity,
                                double risk_free_rate,
                                const std::vector<std::vector<double>>& correlation_matrix,
-                               size_t nb_steps)
+                               size_t nb_steps,
+                               const std::vector<double>& dividend_yields)
     : dimension_(spot_prices.size()),
       spot_prices_(spot_prices),
       volatilities_(volatilities),
@@ -30,6 +31,9 @@ EuropeanBasket::EuropeanBasket(const std::vector<double>& spot_prices,
       strike_(strike),
       maturity_(maturity),
       risk_free_rate_(risk_free_rate),
+      dividend_yields_(dividend_yields.empty()
+                           ? std::vector<double>(spot_prices.size(), 0.0)
+                           : dividend_yields),
       correlation_matrix_(correlation_matrix),
       loading_matrix_(),
       nb_steps_(nb_steps) {
@@ -40,13 +44,13 @@ EuropeanBasket::EuropeanBasket(const std::vector<double>& spot_prices,
 void EuropeanBasket::ValidateInputs() {
   PricingHelper::ValidateEuropeanBasketInputs(
       spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
-      correlation_matrix_, nb_steps_);
+      correlation_matrix_, dividend_yields_, nb_steps_);
 }
 
 double EuropeanBasket::SinglePathPayoff(UniformGenerator* uniform_gen) {
   std::vector<double> terminalSpots = MonteCarloHelper::SimulateGeometricBrownianTerminalND(
-      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
-      maturity_, nb_steps_);
+      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+      &loading_matrix_, 0.0, maturity_, nb_steps_);
 
   const double payoff = MonteCarloHelper::BasketCallPayoff(terminalSpots, weights_, strike_);
   return MonteCarloHelper::DiscountPayoff(payoff, risk_free_rate_, maturity_);
@@ -55,8 +59,8 @@ double EuropeanBasket::SinglePathPayoff(UniformGenerator* uniform_gen) {
 std::pair<double, double> EuropeanBasket::SinglePathPayoffAndControl(
     UniformGenerator* uniform_gen) {
   std::vector<double> terminalSpots = MonteCarloHelper::SimulateGeometricBrownianTerminalND(
-      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
-      maturity_, nb_steps_);
+      uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+      &loading_matrix_, 0.0, maturity_, nb_steps_);
 
   const double callPayoff = MonteCarloHelper::BasketCallPayoff(terminalSpots, weights_, strike_);
   const double targetSample =
@@ -72,8 +76,8 @@ std::pair<double, double> EuropeanBasket::SinglePathAntitheticAverages(
     UniformGenerator* uniform_gen) {
   MonteCarloHelper::TerminalSpotsAntitheticPair terminals =
       MonteCarloHelper::SimulateGeometricBrownianTerminalNDAntithetic(
-          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_,
-          0.0, maturity_, nb_steps_);
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+          &loading_matrix_, 0.0, maturity_, nb_steps_);
 
   const double directCall =
       MonteCarloHelper::BasketCallPayoff(terminals.direct, weights_, strike_);
@@ -98,8 +102,8 @@ std::pair<double, double> EuropeanBasket::SinglePathAntitheticAverages(
 double EuropeanBasket::SinglePathAntitheticPayoffOnly(UniformGenerator* uniform_gen) {
   MonteCarloHelper::TerminalSpotsAntitheticPair terminals =
       MonteCarloHelper::SimulateGeometricBrownianTerminalNDAntithetic(
-          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_,
-          0.0, maturity_, nb_steps_);
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+          &loading_matrix_, 0.0, maturity_, nb_steps_);
 
   const double directCall =
       MonteCarloHelper::BasketCallPayoff(terminals.direct, weights_, strike_);
@@ -173,7 +177,7 @@ MonteCarloSummary EuropeanBasket::PriceFixedNControlVariate(UniformGenerator* un
 
   const double controlMean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
       spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
-      correlation_matrix_);
+      dividend_yields_, correlation_matrix_);
 
   std::vector<double> pilotTarget;
   std::vector<double> pilotControl;
@@ -208,7 +212,7 @@ MonteCarloSummary EuropeanBasket::PriceFixedNCumulative(UniformGenerator* unifor
 
   const double controlMean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
       spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
-      correlation_matrix_);
+      dividend_yields_, correlation_matrix_);
 
   std::vector<double> pilotTarget;
   std::vector<double> pilotControl;

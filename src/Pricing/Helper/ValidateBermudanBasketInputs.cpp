@@ -16,6 +16,7 @@ void ValidateBermudanBasketInputs(const std::vector<double>& spot_prices,
                                   double risk_free_rate,
                                   const std::vector<std::vector<double>>& correlation_matrix,
                                   const std::vector<double>& exercise_dates,
+                                  const std::vector<double>& dividend_yields,
                                   size_t nb_steps) {
   // Basic dimension and positivity checks for market/payoff inputs.
   const size_t dimension = spot_prices.size();
@@ -27,6 +28,9 @@ void ValidateBermudanBasketInputs(const std::vector<double>& spot_prices,
   }
   if (weights.size() != dimension) {
     throw std::invalid_argument("BermudanBasket: weights size mismatch");
+  }
+  if (dividend_yields.size() != dimension) {
+    throw std::invalid_argument("BermudanBasket: dividend yields size mismatch");
   }
 
   for (size_t i = 0; i < dimension; ++i) {
@@ -44,6 +48,12 @@ void ValidateBermudanBasketInputs(const std::vector<double>& spot_prices,
     }
     if (!std::isfinite(weights[i])) {
       throw std::invalid_argument("BermudanBasket: weights must be finite");
+    }
+    if (!std::isfinite(dividend_yields[i])) {
+      throw std::invalid_argument("BermudanBasket: dividend yields must be finite");
+    }
+    if (dividend_yields[i] < 0.0) {
+      throw std::invalid_argument("BermudanBasket: dividend yields must be non-negative");
     }
   }
 

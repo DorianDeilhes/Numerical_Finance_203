@@ -24,13 +24,15 @@ double KnownMeanDiscountedGeometricBasketCall(
     double strike,
     double maturity,
     double rate,
+    const std::vector<double>& dividend_yields,
     const std::vector<std::vector<double>>& correlation_matrix) {
   const size_t dimension = spot_prices.size();
   if (dimension == 0) {
     throw std::runtime_error(
         "KnownMeanDiscountedGeometricBasketCall requires dimension > 0");
   }
-  if (volatilities.size() != dimension || weights.size() != dimension) {
+  if (volatilities.size() != dimension || weights.size() != dimension ||
+      dividend_yields.size() != dimension) {
     throw std::runtime_error(
         "KnownMeanDiscountedGeometricBasketCall requires matching input sizes");
   }
@@ -61,9 +63,13 @@ double KnownMeanDiscountedGeometricBasketCall(
       throw std::runtime_error(
           "KnownMeanDiscountedGeometricBasketCall requires non-negative finite volatilities");
     }
+    if (!std::isfinite(dividend_yields[i]) || dividend_yields[i] < 0.0) {
+      throw std::runtime_error(
+          "KnownMeanDiscountedGeometricBasketCall requires non-negative finite dividend yields");
+    }
 
     log_geometric_spot += weights[i] * std::log(spot_prices[i]);
-    mu_log += weights[i] * (rate - 0.5 * volatilities[i] * volatilities[i]);
+    mu_log += weights[i] * (rate - dividend_yields[i] - 0.5 * volatilities[i] * volatilities[i]);
   }
 
   double variance_rate = 0.0;

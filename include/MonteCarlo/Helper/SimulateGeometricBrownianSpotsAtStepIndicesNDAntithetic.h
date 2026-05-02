@@ -18,6 +18,7 @@ ExerciseSpotsAntitheticPair SimulateGeometricBrownianSpotsAtStepIndicesNDAntithe
     const std::vector<double>& spot_prices,
     const std::vector<double>& volatilities,
     double rate,
+    const std::vector<double>& dividend_yields,
     std::vector<std::vector<double>>* loading_matrix,
     double start_time,
     double end_time,

@@ -15,6 +15,7 @@ void ValidateEuropeanBasketInputs(
     double maturity,
     double riskFreeRate,
     const std::vector<std::vector<double>>& correlationMatrix,
+    const std::vector<double>& dividendYields,
     size_t nbSteps) {
   const size_t dimension = spotPrices.size();
 
@@ -26,6 +27,9 @@ void ValidateEuropeanBasketInputs(
   }
   if (weights.size() != dimension) {
     throw std::invalid_argument("EuropeanBasket: weights size mismatch");
+  }
+  if (dividendYields.size() != dimension) {
+    throw std::invalid_argument("EuropeanBasket: dividend yields size mismatch");
   }
 
   for (size_t i = 0; i < dimension; ++i) {
@@ -43,6 +47,12 @@ void ValidateEuropeanBasketInputs(
     }
     if (!std::isfinite(weights[i])) {
       throw std::invalid_argument("EuropeanBasket: weights must be finite");
+    }
+    if (!std::isfinite(dividendYields[i])) {
+      throw std::invalid_argument("EuropeanBasket: dividend yields must be finite");
+    }
+    if (dividendYields[i] < 0.0) {
+      throw std::invalid_argument("EuropeanBasket: dividend yields must be non-negative");
     }
   }
 

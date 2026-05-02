@@ -8,8 +8,9 @@ double GeometricBrownianExactStep(double spot,
                                   double rate,
                                   double vol,
                                   double dt,
-                                  double shock) {
-  const double drift = (rate - 0.5 * vol * vol) * dt;
+                                  double shock,
+                                  double dividend) {
+  const double drift = (rate - dividend - 0.5 * vol * vol) * dt;
   const double diffusion = vol * std::sqrt(dt) * shock;
   return spot * std::exp(drift + diffusion);
 }

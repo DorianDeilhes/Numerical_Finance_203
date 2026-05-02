@@ -13,6 +13,7 @@ void ValidateEuropeanBasketInputs(
     double maturity,
     double riskFreeRate,
     const std::vector<std::vector<double>>& correlationMatrix,
+    const std::vector<double>& dividendYields,
     size_t nbSteps);
 
 }  // namespace PricingHelper

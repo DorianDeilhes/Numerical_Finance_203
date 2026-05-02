@@ -14,9 +14,9 @@
 // where dW is correlated via the provided correlation matrix.
 class EuropeanBasket {
  public:
-  // Constructor validates all inputs (dimension consistency, positive parameters, correlation bounds).
-  // nb_steps: number of time steps for SDE discretization (Euler scheme). Default: 100.
-  // Higher values improve accuracy but increase computational cost.
+    // Constructor validates all inputs (dimension consistency, positive parameters, correlation bounds).
+  // nb_steps: number of time steps for SDE discretization. Default: 100.
+  // dividend_yields: continuous dividend yield q_i per asset (default: all zeros).
   EuropeanBasket(const std::vector<double>& spot_prices,
                  const std::vector<double>& volatilities,
                  const std::vector<double>& weights,
@@ -24,7 +24,8 @@ class EuropeanBasket {
                  double maturity,
                  double risk_free_rate,
                  const std::vector<std::vector<double>>& correlation_matrix,
-                 size_t nb_steps = 100);
+                 size_t nb_steps = 100,
+                 const std::vector<double>& dividend_yields = {});
 
   // Price using fixed sample size N with 95% confidence interval.
   MonteCarloSummary PriceFixedN(UniformGenerator* uniform_gen, size_t num_samples);
@@ -57,6 +58,7 @@ class EuropeanBasket {
   double strike_;
   double maturity_;
   double risk_free_rate_;
+  std::vector<double> dividend_yields_;
   std::vector<std::vector<double>> correlation_matrix_;
   std::vector<std::vector<double>> loading_matrix_;
   size_t nb_steps_;  // Number of time steps for SDE discretization.
