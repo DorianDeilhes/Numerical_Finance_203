@@ -15,6 +15,7 @@ TerminalSpotsAntitheticPair SimulateGeometricBrownianTerminalNDAntithetic(
     const std::vector<double>& spotPrices,
     const std::vector<double>& volatilities,
     double rate,
+    const std::vector<double>& dividendYields,
     std::vector<std::vector<double>>* loadingMatrix,
     double startTime,
     double endTime,
@@ -24,6 +25,10 @@ TerminalSpotsAntitheticPair SimulateGeometricBrownianTerminalNDAntithetic(
   if (spotPrices.size() != volatilities.size()) {
     throw std::runtime_error(
         "SimulateGeometricBrownianTerminalNDAntithetic requires matching spot and volatility sizes");
+  }
+  if (dividendYields.size() != spotPrices.size()) {
+    throw std::runtime_error(
+        "SimulateGeometricBrownianTerminalNDAntithetic requires matching dividend yield and spot sizes");
   }
 
   BrownianND brownian(generator, static_cast<int>(spotPrices.size()), loadingMatrix);
@@ -51,9 +56,9 @@ TerminalSpotsAntitheticPair SimulateGeometricBrownianTerminalNDAntithetic(
       const double shock = increment / sqrtDt;
 
       result.direct[i] = GeometricBrownianExactStep(result.direct[i], rate,
-                                                    volatilities[i], dt, shock);
+                                                    volatilities[i], dt, shock, dividendYields[i]);
       result.antithetic[i] = GeometricBrownianExactStep(result.antithetic[i], rate,
-                                                        volatilities[i], dt, -shock);
+                                                        volatilities[i], dt, -shock, dividendYields[i]);
     }
   }
 

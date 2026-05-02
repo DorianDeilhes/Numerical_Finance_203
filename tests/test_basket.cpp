@@ -28,6 +28,33 @@ void ExpectThrows(const std::string& message, Callable&& callable) {
   Check(threw, message);
 }
 
+double NormalCDF(double x) {
+  return 0.5 * std::erfc(-x / std::sqrt(2.0));
+}
+
+double BlackScholesCallWithDividend(double spot,
+                                    double strike,
+                                    double maturity,
+                                    double rate,
+                                    double volatility,
+                                    double dividend_yield) {
+  if (volatility < 1e-12) {
+    return std::max(spot * std::exp(-dividend_yield * maturity) -
+                        strike * std::exp(-rate * maturity),
+                    0.0);
+  }
+
+  const double sqrt_maturity = std::sqrt(maturity);
+  const double d1 =
+      (std::log(spot / strike) +
+       (rate - dividend_yield + 0.5 * volatility * volatility) * maturity) /
+      (volatility * sqrt_maturity);
+  const double d2 = d1 - volatility * sqrt_maturity;
+
+  return spot * std::exp(-dividend_yield * maturity) * NormalCDF(d1) -
+         strike * std::exp(-rate * maturity) * NormalCDF(d2);
+}
+
 void TestOneDimensionalBasket() {
   // 1D basket: single asset, weight=1, is just a European call on that asset.
   std::vector<double> spot = {100.0};
@@ -49,6 +76,27 @@ void TestOneDimensionalBasket() {
   Check(summary.standardError > 0.0, "1D basket should have positive std error");
   Check(summary.confidenceInterval.upper > summary.confidenceInterval.lower,
         "1D basket CI bounds invalid");
+}
+
+void TestDividendOneDimensionalBasketMatchesClosedForm() {
+  const double spot = 100.0;
+  const double volatility = 0.2;
+  const double strike = 100.0;
+  const double maturity = 1.0;
+  const double rate = 0.05;
+  const double dividend_yield = 0.04;
+  const double expected = BlackScholesCallWithDividend(
+      spot, strike, maturity, rate, volatility, dividend_yield);
+
+  EuropeanBasket basket({spot}, {volatility}, {1.0}, strike, maturity, rate,
+                        {{1.0}}, 100, {dividend_yield});
+
+  EcuyerCombined uniform(24680, 13579);
+  const MonteCarloSummary summary = basket.PriceFixedN(&uniform, 8000);
+  const double tolerance = 3.0 * summary.standardError;
+
+  Check(std::fabs(summary.mean - expected) < tolerance,
+        "Dividend-paying 1D basket should match Black-Scholes with dividend yield");
 }
 
 void TestTwoDimensionalBasket() {
@@ -228,6 +276,18 @@ void TestValidationErrors() {
                           {{1.0, std::numeric_limits<double>::quiet_NaN()},
                            {std::numeric_limits<double>::quiet_NaN(), 1.0}});
   });
+
+  ExpectThrows("Should reject dividend yield size mismatch", []() {
+    EuropeanBasket basket({100.0, 100.0}, {0.2, 0.2}, {0.5, 0.5},
+                          100.0, 1.0, 0.05, {{1.0, 0.3}, {0.3, 1.0}},
+                          100, {0.01});
+  });
+
+  ExpectThrows("Should reject negative dividend yield", []() {
+    EuropeanBasket basket({100.0, 100.0}, {0.2, 0.2}, {0.5, 0.5},
+                          100.0, 1.0, 0.05, {{1.0, 0.3}, {0.3, 1.0}},
+                          100, {0.01, -0.02});
+  });
 }
 
 void TestPublicPricingValidationErrors() {
@@ -284,6 +344,7 @@ int main() {
     std::cout << "============================================================\n\n";
 
     TestOneDimensionalBasket();
+    TestDividendOneDimensionalBasketMatchesClosedForm();
     TestTwoDimensionalBasket();
     TestReproducibility();
     TestFixedPrecisionMode();

@@ -46,6 +46,10 @@ struct BasketOptionProduct {
   double risk_free_rate;
   std::vector<std::vector<double>> correlation_matrix;
 
+  // Continuous dividend yield q_i per asset (annualized). 0.0 = no dividend.
+  // Must have one entry per underlying (same size as spot_prices).
+  std::vector<double> dividend_yields;
+
   // Used only when exercise_style == BermudanStyle.
   std::vector<double> exercise_dates;
 };
@@ -107,6 +111,12 @@ BasketOptionProduct BuildProductToModify() {
   // Risk-free rate r used in the Black-Scholes drift and discount factor.
   // Example: 0.03 means 3% annual rate.
   product.risk_free_rate = 0.03;
+
+  // Continuous dividend yield q_i per asset (annualized decimal), one per underlying.
+  // Under Black-Scholes with dividends, the drift of asset i becomes (r - q_i).
+  // Set all entries to 0.0 for non-dividend-paying assets.
+  // Example with 2 underlyings: {0.02, 0.05} means 2% and 5% annual dividend yields.
+  product.dividend_yields = {0.0, 0.0};
 
   // Correlation matrix R between asset Brownian motions.
   // Size must be dimension x dimension, where dimension = spot_prices.size().
@@ -255,7 +265,13 @@ void PrintProduct(const BasketOptionProduct& product) {
   std::cout << "  Strike: " << product.strike
             << ", maturity: " << product.maturity
             << ", rate: " << product.risk_free_rate << "\n";
-
+  if (!product.dividend_yields.empty()) {
+    std::cout << "  Dividend yields:";
+    for (size_t i = 0; i < product.dividend_yields.size(); ++i) {
+      std::cout << " " << product.dividend_yields[i];
+    }
+    std::cout << "\n";
+  }
   if (product.exercise_style == BermudanStyle) {
     std::cout << "  Exercise dates:";
     for (size_t i = 0; i < product.exercise_dates.size(); ++i) {
@@ -317,7 +333,8 @@ class BasketScenarioPricer {
                           product.maturity,
                           product.risk_free_rate,
                           product.correlation_matrix,
-                          config.nb_steps);
+                          config.nb_steps,
+                          product.dividend_yields);
 
     std::unique_ptr<UniformGenerator> generator = BuildGenerator(product, config);
     if (config.pricing_method == BasicMonteCarlo) {
@@ -346,7 +363,8 @@ class BasketScenarioPricer {
                           product.risk_free_rate,
                           product.correlation_matrix,
                           product.exercise_dates,
-                          config.nb_steps);
+                          config.nb_steps,
+                          product.dividend_yields);
 
     std::unique_ptr<UniformGenerator> generator = BuildGenerator(product, config);
     if (config.pricing_method == BasicMonteCarlo) {

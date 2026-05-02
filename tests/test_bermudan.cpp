@@ -73,6 +73,59 @@ void TestSingleExerciseMatchesEuropean() {
         "Bermudan with one exercise date at maturity must match European price");
 }
 
+void TestSingleExerciseWithDividendMatchesEuropean() {
+  std::vector<double> spot = {100.0, 105.0};
+  std::vector<double> vol = {0.2, 0.25};
+  std::vector<double> weights = {0.6, 0.4};
+  std::vector<double> dividends = {0.06, 0.02};
+  const double strike = 100.0;
+  const double maturity = 1.0;
+  const double rate = 0.03;
+  std::vector<std::vector<double>> corr = {{1.0, 0.35}, {0.35, 1.0}};
+
+  EuropeanBasket european(spot, vol, weights, strike, maturity, rate, corr,
+                          100, dividends);
+  BermudanBasket bermudan(spot, vol, weights, strike, maturity, rate, corr,
+                          /*exercise_dates=*/{maturity}, /*nb_steps=*/100,
+                          dividends);
+
+  EcuyerCombined rng_eu(22222, 33333);
+  EcuyerCombined rng_be(22222, 33333);
+
+  const MonteCarloSummary eu = european.PriceFixedN(&rng_eu, 3000);
+  const MonteCarloSummary be = bermudan.PriceFixedN(&rng_be, 3000);
+
+  Check(std::fabs(eu.mean - be.mean) < 1e-10,
+        "Dividend-paying Bermudan with only maturity exercise must match European price");
+}
+
+void TestDividendCreatesEarlyExercisePremium() {
+  const double spot = 100.0;
+  const double volatility = 0.2;
+  const double strike = 100.0;
+  const double maturity = 1.0;
+  const double rate = 0.03;
+  const double dividend_yield = 0.10;
+  const std::vector<std::vector<double>> corr = {{1.0}};
+  const std::vector<double> exercise_dates = {0.0, 0.25, 0.5, 0.75, 1.0};
+
+  EuropeanBasket european({spot}, {volatility}, {1.0}, strike, maturity, rate,
+                          corr, 4, {dividend_yield});
+  BermudanBasket bermudan({spot}, {volatility}, {1.0}, strike, maturity, rate,
+                          corr, exercise_dates, 4, {dividend_yield});
+
+  EcuyerCombined rng_eu(44444, 55555);
+  EcuyerCombined rng_be(66666, 77777);
+
+  const MonteCarloSummary eu = european.PriceFixedN(&rng_eu, 12000);
+  const MonteCarloSummary be = bermudan.PriceFixedN(&rng_be, 12000);
+  const double combined_se = std::sqrt(eu.sampleVariance / eu.sampleSize +
+                                       be.sampleVariance / be.sampleSize);
+
+  Check(be.mean > eu.mean + 2.0 * combined_se,
+        "High dividend yield should create a visible Bermudan early-exercise premium");
+}
+
 void TestMoreExerciseDatesDoesNotDecreasePrice() {
   std::vector<double> spot = {100.0, 105.0};
   std::vector<double> vol = {0.2, 0.25};
@@ -213,6 +266,16 @@ void TestValidationErrors() {
     BermudanBasket basket(spot, vol, weights, strike, maturity, rate,
                           {{1.0}, {0.2, 1.0}}, {0.5, 1.0}, 100);
   });
+
+  ExpectThrows("Should reject dividend yield size mismatch", [&]() {
+    BermudanBasket basket(spot, vol, weights, strike, maturity, rate, corr,
+                          {0.5, 1.0}, 100, {0.01});
+  });
+
+  ExpectThrows("Should reject negative dividend yield", [&]() {
+    BermudanBasket basket(spot, vol, weights, strike, maturity, rate, corr,
+                          {0.5, 1.0}, 100, {0.01, -0.02});
+  });
 }
 
 void TestPhase5ValidationErrors() {
@@ -275,6 +338,8 @@ int main() {
     std::cout << "============================================================\n\n";
 
     TestSingleExerciseMatchesEuropean();
+    TestSingleExerciseWithDividendMatchesEuropean();
+    TestDividendCreatesEarlyExercisePremium();
     TestMoreExerciseDatesDoesNotDecreasePrice();
     TestExerciseScheduleCanStartAtZero();
     TestPhase5QuasiRandomRuns();

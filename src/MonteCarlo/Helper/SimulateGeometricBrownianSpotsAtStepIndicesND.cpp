@@ -15,6 +15,7 @@ std::vector<std::vector<double>> SimulateGeometricBrownianSpotsAtStepIndicesND(
     const std::vector<double>& spot_prices,
     const std::vector<double>& volatilities,
     double rate,
+    const std::vector<double>& dividend_yields,
     std::vector<std::vector<double>>* loading_matrix,
     double start_time,
     double end_time,
@@ -25,6 +26,10 @@ std::vector<std::vector<double>> SimulateGeometricBrownianSpotsAtStepIndicesND(
   if (spot_prices.size() != volatilities.size()) {
     throw std::runtime_error(
         "SimulateGeometricBrownianSpotsAtStepIndicesND requires matching spot and volatility sizes");
+  }
+  if (dividend_yields.size() != spot_prices.size()) {
+    throw std::runtime_error(
+        "SimulateGeometricBrownianSpotsAtStepIndicesND requires matching dividend yield and spot sizes");
   }
   if (step_indices.empty()) {
     throw std::runtime_error("SimulateGeometricBrownianSpotsAtStepIndicesND requires non-empty step indices");
@@ -72,7 +77,7 @@ std::vector<std::vector<double>> SimulateGeometricBrownianSpotsAtStepIndicesND(
       }
       const double increment = path->GetState(next_time) - path->GetState(current_time);
       current_spots[i] = GeometricBrownianExactStep(current_spots[i], rate, volatilities[i], dt,
-                                                    increment / std::sqrt(dt));
+                                                    increment / std::sqrt(dt), dividend_yields[i]);
     }
 
     // Record spot snapshots exactly at requested (1-based) simulation steps.

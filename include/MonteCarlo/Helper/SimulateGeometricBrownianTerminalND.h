@@ -12,6 +12,7 @@ std::vector<double> SimulateGeometricBrownianTerminalND(
     const std::vector<double>& spotPrices,
     const std::vector<double>& volatilities,
     double rate,
+    const std::vector<double>& dividendYields,
     std::vector<std::vector<double>>* loadingMatrix,
     double startTime,
     double endTime,

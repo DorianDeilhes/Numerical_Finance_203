@@ -12,6 +12,8 @@
 class BermudanBasket {
  public:
   // Build a Bermudan basket pricer with an explicit exercise schedule and a configurable time grid.
+  // nb_steps: number of SDE time steps. Default: 100.
+  // dividend_yields: continuous dividend yield q_i per asset (default: all zeros).
   BermudanBasket(const std::vector<double>& spot_prices,
                  const std::vector<double>& volatilities,
                  const std::vector<double>& weights,
@@ -20,7 +22,8 @@ class BermudanBasket {
                  double risk_free_rate,
                  const std::vector<std::vector<double>>& correlation_matrix,
                  const std::vector<double>& exercise_dates,
-                 size_t nb_steps = 100);
+                 size_t nb_steps = 100,
+                 const std::vector<double>& dividend_yields = {});
 
   // Price the Bermudan contract with fixed-path Monte Carlo and regression-based exercise decisions.
   MonteCarloSummary PriceFixedN(UniformGenerator* uniform_gen, size_t path_count);
@@ -52,6 +55,7 @@ class BermudanBasket {
   double strike_;
   double maturity_;
   double risk_free_rate_;
+  std::vector<double> dividend_yields_;
   std::vector<std::vector<double>> correlation_matrix_;
   std::vector<std::vector<double>> loading_matrix_;
   std::vector<double> exercise_dates_;

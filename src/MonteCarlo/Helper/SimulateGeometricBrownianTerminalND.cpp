@@ -15,6 +15,7 @@ std::vector<double> SimulateGeometricBrownianTerminalND(
     const std::vector<double>& spotPrices,
     const std::vector<double>& volatilities,
     double rate,
+    const std::vector<double>& dividendYields,
     std::vector<std::vector<double>>* loadingMatrix,
     double startTime,
     double endTime,
@@ -22,6 +23,9 @@ std::vector<double> SimulateGeometricBrownianTerminalND(
   ValidateTimeGrid("SimulateGeometricBrownianTerminalND", startTime, endTime, nbSteps);
   if (spotPrices.size() != volatilities.size()) {
     throw std::runtime_error("SimulateGeometricBrownianTerminalND requires matching spot and volatility sizes");
+  }
+  if (dividendYields.size() != spotPrices.size()) {
+    throw std::runtime_error("SimulateGeometricBrownianTerminalND requires matching dividend yield and spot sizes");
   }
 
   BrownianND brownian(generator, static_cast<int>(spotPrices.size()), loadingMatrix);
@@ -39,7 +43,7 @@ std::vector<double> SimulateGeometricBrownianTerminalND(
       }
       const double increment = path->GetState(nextTime) - path->GetState(currentTime);
       terminalSpots[i] = GeometricBrownianExactStep(terminalSpots[i], rate, volatilities[i], dt,
-                                                    increment / std::sqrt(dt));
+                                                    increment / std::sqrt(dt), dividendYields[i]);
     }
   }
 

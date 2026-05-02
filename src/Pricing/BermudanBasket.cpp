@@ -35,7 +35,8 @@ BermudanBasket::BermudanBasket(const std::vector<double>& spot_prices,
                                double risk_free_rate,
                                const std::vector<std::vector<double>>& correlation_matrix,
                                const std::vector<double>& exercise_dates,
-                               size_t nb_steps)
+                               size_t nb_steps,
+                               const std::vector<double>& dividend_yields)
     : dimension_(spot_prices.size()),
       spot_prices_(spot_prices),
       volatilities_(volatilities),
@@ -43,6 +44,9 @@ BermudanBasket::BermudanBasket(const std::vector<double>& spot_prices,
       strike_(strike),
       maturity_(maturity),
       risk_free_rate_(risk_free_rate),
+      dividend_yields_(dividend_yields.empty()
+                           ? std::vector<double>(spot_prices.size(), 0.0)
+                           : dividend_yields),
       correlation_matrix_(correlation_matrix),
       loading_matrix_(),
       exercise_dates_(exercise_dates),
@@ -54,7 +58,7 @@ BermudanBasket::BermudanBasket(const std::vector<double>& spot_prices,
 void BermudanBasket::ValidateInputs() {
   PricingHelper::ValidateBermudanBasketInputs(spot_prices_, volatilities_, weights_, strike_,
                                                maturity_, risk_free_rate_, correlation_matrix_,
-                                               exercise_dates_, nb_steps_);
+                                               exercise_dates_, dividend_yields_, nb_steps_);
 }
 
 std::vector<double> BermudanBasket::SimulateBasketStatesAtExerciseDates(
@@ -66,8 +70,8 @@ std::vector<double> BermudanBasket::SimulateBasketStatesAtExerciseDates(
   // Simulate one ND path and retain spots only at requested exercise steps.
   const std::vector<std::vector<double>> spots_by_exercise =
       MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesND(
-          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
-          maturity_, nb_steps_, step_indices);
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+          &loading_matrix_, 0.0, maturity_, nb_steps_, step_indices);
 
   // Collapse ND spot vectors to a scalar basket state per exercise date.
   std::vector<double> basket_states;
@@ -85,8 +89,8 @@ BermudanBasket::SimulateBasketStatesAntitheticAtExerciseDates(UniformGenerator* 
 
   const MonteCarloHelper::ExerciseSpotsAntitheticPair spots_by_exercise =
       MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesNDAntithetic(
-          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
-          maturity_, nb_steps_, step_indices);
+          uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+          &loading_matrix_, 0.0, maturity_, nb_steps_, step_indices);
 
   std::vector<double> direct_basket_states;
   std::vector<double> antithetic_basket_states;
@@ -155,8 +159,8 @@ BermudanBasket::SimulateBasketStatesAndGeometricControlsByDate(UniformGenerator*
   for (size_t path = 0; path < path_count; ++path) {
     const std::vector<std::vector<double>> spots_by_exercise =
         MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesND(
-            uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
-            maturity_, nb_steps_, step_indices);
+            uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+            &loading_matrix_, 0.0, maturity_, nb_steps_, step_indices);
 
     for (size_t k = 0; k < exercise_count; ++k) {
       simulation.basket_states_by_date[k][path] =
@@ -186,8 +190,8 @@ BermudanBasket::SimulateAntitheticBasketStatesAndGeometricControlsByDate(
   for (size_t j = 0; j < pair_count; ++j) {
     const MonteCarloHelper::ExerciseSpotsAntitheticPair spots_by_exercise =
         MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesNDAntithetic(
-            uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
-            maturity_, nb_steps_, step_indices);
+            uniform_gen, spot_prices_, volatilities_, risk_free_rate_, dividend_yields_,
+            &loading_matrix_, 0.0, maturity_, nb_steps_, step_indices);
 
     for (size_t k = 0; k < exercise_count; ++k) {
       simulation.basket_states_by_date[k][j] =
@@ -384,7 +388,7 @@ MonteCarloSummary BermudanBasket::PriceFixedNControlVariate(UniformGenerator* un
 
   const double control_mean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
       spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
-      correlation_matrix_);
+      dividend_yields_, correlation_matrix_);
 
   const std::pair<std::vector<double>, std::vector<double>> pilot_samples =
       BuildPathValuesAndControls(uniform_gen, pilot_count);
@@ -428,7 +432,7 @@ MonteCarloSummary BermudanBasket::PriceFixedNCumulative(UniformGenerator* unifor
 
   const double control_mean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
       spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
-      correlation_matrix_);
+      dividend_yields_, correlation_matrix_);
 
   const std::pair<std::vector<double>, std::vector<double>> pilot_samples =
       BuildAntitheticPairValuesAndControls(uniform_gen, pilot_count);
