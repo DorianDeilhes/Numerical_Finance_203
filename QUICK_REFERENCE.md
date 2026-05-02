@@ -1,219 +1,122 @@
-# QUICK REFERENCE: nb_steps Parameterization
+# Quick Reference
 
-## How to Use (For Professor)
+Short cheat sheet for compiling, testing, and running the project.
+For explanations and examples, use `README.md` and `USAGE_EXAMPLES.md`.
 
-### 1. Default Configuration
-```cpp
-EuropeanBasket basket(spot, vol, weight, strike, maturity, rate, corr);
-// Uses nb_steps = 100 (default)
+## Build And Test
+
+Run from the project root:
+
+```bash
+cmake -S . -B build
+cmake --build build --parallel 2
+ctest --test-dir build --output-on-failure
 ```
 
-### 2. Custom Configuration
-```cpp
-EuropeanBasket basket(spot, vol, weight, strike, maturity, rate, corr, 250);
-// Uses nb_steps = 250
+Low-RAM build:
+
+```bash
+cmake --build build
 ```
 
-### 3. Different Modes
-```cpp
-// Fast (50 steps, ~2x faster)
-EuropeanBasket fast(spot, vol, weight, strike, maturity, rate, corr, 50);
-auto result = fast.PriceFixedN(&rng, 5000);
+## Run On Windows
 
-// Balanced (100 steps, default)
-EuropeanBasket balanced(spot, vol, weight, strike, maturity, rate, corr, 100);
-auto result = balanced.PriceFixedN(&rng, 10000);
+Git Bash:
 
-// Accurate (500 steps, ~5x slower, better accuracy)
-EuropeanBasket accurate(spot, vol, weight, strike, maturity, rate, corr, 500);
-auto result = accurate.PriceFixedN(&rng, 50000);
+```bash
+./build/professor_smoke_test.exe
+./build/professor_editable_scenario.exe
+./build/report_results.exe
+./build/number_generation_app.exe
 ```
 
----
+PowerShell:
 
-## What Changed
-
-| What | Before | After |
-|------|--------|-------|
-| nb_steps | Hardcoded: `const size_t nbSteps = 100;` | Parameterized: `size_t nb_steps_` member |
-| Constructor | No SDE discretization parameter | `size_t nb_steps = 100` (configurable) |
-| Antithetic Mode | Used `SinglePathAntitheticAverages().first` (computes control, wastes it) | Uses `SinglePathAntitheticPayoffOnly()` (only target, optimized) |
-| Flexibility | Fixed: all instances used 100 steps | Variable: each instance has own nb_steps |
-
----
-
-## Methods & What They Do
-
-| Method | Purpose | nb_steps Control |
-|--------|---------|-----------------|
-| `PriceFixedN()` | Fixed sample size pricing | Respects member nb_steps_ |
-| `PriceFixedPrecision()` | Adaptive precision target | Respects member nb_steps_ |
-| `PriceFixedNAntithetic()` | Antithetic variance reduction | Uses optimized SinglePathAntitheticPayoffOnly() |
-| `PriceFixedNControlVariate()` | Control variate reduction | Uses SinglePathPayoffAndControl() |
-| `PriceFixedNCumulative()` | Antithetic + control combined | Uses SinglePathAntitheticAverages() |
-
----
-
-## Member Variable Details
-
-```cpp
-private:
-  size_t nb_steps_;  // Number of time steps for Euler discretization
+```powershell
+.\build\professor_smoke_test.exe
+.\build\professor_editable_scenario.exe
+.\build\report_results.exe
+.\build\number_generation_app.exe
 ```
 
-**Where it's set:** Constructor (line 32)
-```cpp
-nb_steps_(nb_steps)
+## Run On Linux Or macOS
+
+```bash
+./build/professor_smoke_test
+./build/professor_editable_scenario
+./build/report_results
+./build/number_generation_app
 ```
 
-**Where it's used:**
-- Line 47: `SinglePathPayoff()`
-- Line 54: `SinglePathPayoffAndControl()`
-- Line 68: `SinglePathAntitheticAverages()`
-- Line 102: `SinglePathAntitheticPayoffOnly()`
+## Executables
 
----
+| Executable | Use |
+|---|---|
+| `professor_smoke_test` | Fixed demo to check that pricing works. |
+| `professor_editable_scenario` | Main file for custom products and pricer settings. |
+| `report_results` | Creates local `report_results.csv` for tables and graphs. |
+| `number_generation_app` | Original random generator demo, not the final pricing app. |
 
-## Constructor Signature
+## Custom Scenario
 
-```cpp
-EuropeanBasket(
-    const std::vector<double>& spot_prices,
-    const std::vector<double>& volatilities,
-    const std::vector<double>& weights,
-    double strike,
-    double maturity,
-    double risk_free_rate,
-    const std::vector<std::vector<double>>& correlation_matrix,
-    size_t nb_steps = 100  // <-- NEW PARAMETER
-);
-```
-
-**Default Value:** 100 time steps
-**Range:** Any positive integer (typical: 25-1000)
-**Effect:** Higher = slower but more accurate
-
----
-
-## New Method
-
-### SinglePathAntitheticPayoffOnly()
+Edit only these two functions in `professor_editable_scenario.cpp`:
 
 ```cpp
-double SinglePathAntitheticPayoffOnly(UniformGenerator* uniform_gen);
+BuildProductToModify()
+BuildPricerConfigToModify()
 ```
 
-**What it does:**
-- Generates antithetic pair (direct & mirrored shocks)
-- Computes both payoffs
-- Returns averaged payoff
+Then rebuild and run:
 
-**What it does NOT do:**
-- Does NOT compute control variate (optimization!)
-- Does NOT waste computation
-
-**Used by:** `PriceFixedNAntithetic()`
-
-**Why:** Pure performance optimization for antithetic-only mode
-
----
-
-## Performance Impact
-
-| Operation | Before | After | Change |
-|-----------|--------|-------|--------|
-| Antithetic pricing | Computes target + control | Computes target only | ~10-15% faster |
-| nb_steps behavior | Fixed 100 | Configurable | +Flexibility |
-| Initialization | O(d²) validation | Same + nb_steps check | No significant change |
-| Memory | Fixed overhead | +8 bytes (size_t) | Negligible |
-
----
-
-## Configuration Examples
-
-### Speed vs Accuracy Trade-off
-
-```cpp
-// Speed Priority: Fast quotes, approximate values
-EuropeanBasket speed(spot, vol, weight, K, T, r, corr, 50);
-result = speed.PriceFixedN(&rng, 5000);  // Fast
-
-// Balanced: Default, good for most uses
-EuropeanBasket balanced(spot, vol, weight, K, T, r, corr);  // Default 100
-result = balanced.PriceFixedN(&rng, 10000);  // Standard
-
-// Accuracy Priority: Production, research
-EuropeanBasket accuracy(spot, vol, weight, K, T, r, corr, 500);
-result = accuracy.PriceFixedN(&rng, 50000);  // Slow but accurate
-
-// Extreme Accuracy: Validation, publication
-EuropeanBasket extreme(spot, vol, weight, K, T, r, corr, 1000);
-result = extreme.PriceFixedN(&rng, 100000);  // Very slow, very accurate
+```bash
+cmake --build build --target professor_editable_scenario --parallel 2
+./build/professor_editable_scenario.exe
 ```
 
----
+## Product Settings
 
-## Tuning Checklist (At Project End)
+In `BuildProductToModify()`:
 
-- [ ] Decide main nb_steps value for production (e.g., 100)
-- [ ] Decide fast approximation nb_steps (e.g., 50) if needed
-- [ ] Decide high-accuracy nb_steps (e.g., 500) if needed
-- [ ] Test performance: measure time for each configuration
-- [ ] Test accuracy: compare with reference prices
-- [ ] Document chosen configuration in README
-- [ ] Create configuration presets (fast/balanced/accurate)
+| Setting | Meaning |
+|---|---|
+| `exercise_style` | `EuropeanStyle` or `BermudanStyle`. |
+| `payoff_type` | Current choice: `BasketCallPayoff`. |
+| `spot_prices` | Initial asset prices. Basket dimension is this vector size. |
+| `volatilities` | One annual volatility per asset. |
+| `weights` | Basket weights. Negative weights are allowed. |
+| `strike` | Strike `K`. |
+| `maturity` | Maturity `T`, in years. |
+| `risk_free_rate` | Constant risk-free rate `r`. |
+| `correlation_matrix` | Square correlation matrix matching the basket dimension. |
+| `exercise_dates` | Bermudan exercise dates. Ignored for European products. |
 
----
+## Pricer Settings
 
-## Backward Compatibility
+In `BuildPricerConfigToModify()`:
 
-**Old Code (Still Works):**
-```cpp
-EuropeanBasket b(s,v,w,K,T,r,c);  // Uses default 100
+| Setting | Meaning |
+|---|---|
+| `pricing_method` | `BasicMonteCarlo`, `StaticControlVariate`, `AntitheticVariables`, or `CumulativeVarianceReduction`. |
+| `random_generator` | `PseudoRandom` or `QuasiRandom`. |
+| `nb_steps` | Black-Scholes time steps. Bermudan dates must align with this grid. |
+| `path_count` | Number of paths for basic and control-variate pricing. |
+| `pair_count` | Number of direct/antithetic pairs. |
+| `pilot_count` | Pilot paths used to estimate the control-variate coefficient. |
+| `pseudo_seed_1`, `pseudo_seed_2` | Seeds for pseudo-random simulations. |
+| `halton_dimension` | Halton dimension. Use `0` for automatic dimension. |
+| `use_halton_shift`, `halton_shift_seed` | Optional shifted Halton sequence settings. |
+
+## Report Order
+
+`report_results` compares:
+
+1. basic pseudo-random Monte Carlo,
+2. quasi-random Monte Carlo,
+3. quasi-random + static control variate,
+4. quasi-random + static control variate + antithetic variables.
+
+Run:
+
+```bash
+./build/report_results.exe
 ```
-
-**New Code (Full Control):**
-```cpp
-EuropeanBasket b(s,v,w,K,T,r,c,250);  // Custom value
-```
-
-**Result:** Zero breaking changes, pure addition
-
----
-
-## Tests Passing
-
-✅ comprehensive_tests
-✅ sde_tests  
-✅ mc_core_tests
-✅ basket_tests
-✅ phase3_tests
-
-All 5/5 tests passing with parameterized architecture.
-
----
-
-## Documentation Files
-
-| File | Purpose |
-|------|---------|
-| COMPLETION_SUMMARY.md | This session's overview |
-| ARCHITECTURE_CHANGES.md | Detailed explanation of all changes |
-| USAGE_EXAMPLES.md | 9 code examples for different scenarios |
-| DETAILED_CODE_CHANGES.md | Line-by-line before/after comparison |
-| QUICK_REFERENCE.md | This file - quick lookup |
-
----
-
-##Key Insight
-
-**Old:** "SDE uses 100 time steps" → Fixed, no flexibility
-**New:** "SDE uses nb_steps time steps, default 100" → Flexible, professor controls
-
-This simple change unlocks complete parameterization of MC-critical settings.
-
----
-
-*Generated: Same Session as Architecture Implementation*
-*All code changes verified and tested*
-*Ready for production use and final tuning*

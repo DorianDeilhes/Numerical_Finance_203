@@ -1,250 +1,240 @@
-# Usage Examples: Parameterized nb_steps Architecture
+# Usage Examples
 
-## Quick Start Guide for Professor
+This file shows the practical ways to use the project after it has been built with CMake.
 
-### 1. Basic Usage (Default Settings)
+Build once from the project root:
+
+```bash
+cmake -S . -B build
+cmake --build build --parallel 2
+ctest --test-dir build --output-on-failure
+```
+
+## 1. Quick End-To-End Check
+
+Run the fixed public demo:
+
+```bash
+./build/professor_smoke_test.exe
+```
+
+This runs European and Bermudan examples and prints results for:
+
+- basic pseudo-random Monte Carlo,
+- quasi-random Monte Carlo,
+- static control variate,
+- antithetic variables,
+- cumulative variance reduction.
+
+Use this when you want to check that the project works without editing inputs.
+
+## 2. Main User Workflow
+
+The main file to edit is:
+
+```text
+professor_editable_scenario.cpp
+```
+
+Only edit these two functions:
+
+```cpp
+BuildProductToModify()
+BuildPricerConfigToModify()
+```
+
+After editing, rebuild only this executable:
+
+```bash
+cmake --build build --target professor_editable_scenario --parallel 2
+```
+
+Then run it:
+
+```bash
+./build/professor_editable_scenario.exe
+```
+
+## 3. Example Product Changes
+
+### European Two-Asset Basket
+
+In `BuildProductToModify()`:
+
+```cpp
+product.exercise_style = EuropeanStyle;
+product.payoff_type = BasketCallPayoff;
+
+product.spot_prices = {100.0, 105.0};
+product.volatilities = {0.20, 0.25};
+product.weights = {0.60, 0.40};
+product.strike = 100.0;
+product.maturity = 1.0;
+product.risk_free_rate = 0.03;
+
+product.correlation_matrix = {
+    {1.0, 0.35},
+    {0.35, 1.0}
+};
+```
+
+For `EuropeanStyle`, `exercise_dates` is ignored.
+
+### Bermudan Two-Asset Basket
+
+```cpp
+product.exercise_style = BermudanStyle;
+product.exercise_dates = {0.25, 0.50, 0.75, 1.0};
+```
+
+The last date must be equal to `product.maturity`.
+Dates must align with the simulation grid. For example, with:
+
+```cpp
+product.maturity = 1.0;
+config.nb_steps = 40;
+```
+
+the time step is `1.0 / 40 = 0.025`, so `0.25`, `0.50`, `0.75`, and `1.0` are aligned.
+
+### Three-Asset Basket With A Negative Weight
+
+```cpp
+product.spot_prices = {100.0, 95.0, 110.0};
+product.volatilities = {0.18, 0.22, 0.30};
+product.weights = {0.70, 0.50, -0.20};
+product.strike = 102.0;
+
+product.correlation_matrix = {
+    {1.0, 0.20, -0.10},
+    {0.20, 1.0, 0.25},
+    {-0.10, 0.25, 1.0}
+};
+```
+
+The vectors and matrix must all match the same dimension.
+
+## 4. Example Pricer Changes
+
+In `BuildPricerConfigToModify()`:
+
+### Basic Pseudo-Random Monte Carlo
+
+```cpp
+config.pricing_method = BasicMonteCarlo;
+config.random_generator = PseudoRandom;
+config.path_count = 10000;
+```
+
+### Quasi-Random Monte Carlo
+
+```cpp
+config.pricing_method = BasicMonteCarlo;
+config.random_generator = QuasiRandom;
+config.path_count = 10000;
+config.halton_dimension = 0;
+config.use_halton_shift = true;
+```
+
+### Static Control Variate
+
+```cpp
+config.pricing_method = StaticControlVariate;
+config.random_generator = PseudoRandom;
+config.path_count = 10000;
+config.pilot_count = 500;
+```
+
+### Antithetic Variables
+
+```cpp
+config.pricing_method = AntitheticVariables;
+config.random_generator = PseudoRandom;
+config.pair_count = 5000;
+```
+
+`pair_count = 5000` means 5000 direct/antithetic pairs, so 10000 paths are simulated.
+
+### Cumulative Variance Reduction
+
+```cpp
+config.pricing_method = CumulativeVarianceReduction;
+config.random_generator = QuasiRandom;
+config.pair_count = 5000;
+config.pilot_count = 500;
+```
+
+This is the main full variance reduction mode for the project.
+
+## 5. Direct C++ API Example
+
+You can also call the pricing classes directly.
+
 ```cpp
 #include "Pricing/EuropeanBasket.h"
 #include "UniformGenerator/EcuyerCombined.h"
 
-// Setup
-std::vector<double> spot_prices = {100.0, 105.0, 110.0};
-std::vector<double> volatilities = {0.20, 0.22, 0.21};
-std::vector<double> weights = {0.4, 0.3, 0.3};
-double strike = 105.0;
-double maturity = 1.0;
-double risk_free_rate = 0.03;
-std::vector<std::vector<double>> correlation_matrix = {
-    {1.0, 0.5, 0.3},
-    {0.5, 1.0, 0.4},
-    {0.3, 0.4, 1.0}
-};
+#include <iostream>
+#include <vector>
 
-// Create basket with default 100 time steps
-EuropeanBasket basket(spot_prices, volatilities, weights, strike, maturity, 
-                      risk_free_rate, correlation_matrix);
+int main() {
+  std::vector<double> spot = {100.0, 105.0};
+  std::vector<double> vol = {0.20, 0.25};
+  std::vector<double> weights = {0.60, 0.40};
+  std::vector<std::vector<double>> corr = {
+      {1.0, 0.35},
+      {0.35, 1.0}
+  };
 
-// Price it
-EcuyerCombined rng(12345, 67890);
-MonteCarloSummary result = basket.PriceFixedN(&rng, 10000);
+  EuropeanBasket basket(spot, vol, weights,
+                        100.0,  // strike
+                        1.0,    // maturity
+                        0.03,   // risk-free rate
+                        corr,
+                        40);    // nb_steps
 
-std::cout << "Call price: " << result.mean << " ± " << result.confidenceIntervalHalfWidth << std::endl;
-```
-
----
-
-## 2. Speed-First Configuration (Fast Approximation)
-Use for quick estimates, pre-production testing:
-
-```cpp
-// Fewer time steps = faster computation
-EuropeanBasket basket_fast(spot_prices, volatilities, weights, strike, maturity, 
-                           risk_free_rate, correlation_matrix, 
-                           50);  // 50 time steps instead of default 100
-
-MonteCarloSummary fast_result = basket_fast.PriceFixedN(&rng, 5000);
-std::cout << "Quick estimate: " << fast_result.mean << std::endl;
-// Computation time: ~half of default, slightly less accurate
-```
-
----
-
-## 3. Accuracy-First Configuration (High Precision)
-Use for production, research validation:
-
-```cpp
-// More time steps = higher accuracy
-EuropeanBasket basket_precise(spot_prices, volatilities, weights, strike, maturity, 
-                              risk_free_rate, correlation_matrix, 
-                              500);  // 500 time steps for high accuracy
-
-MonteCarloSummary precise_result = basket_precise.PriceFixedN(&rng, 50000);
-std::cout << "High-precision result: " << precise_result.mean << std::endl;
-// Computation time: ~5x default, significantly more accurate
-```
-
----
-
-## 4. Variance Reduction Study (same basket, different modes)
-```cpp
-EcuyerCombined rng(98765, 43210);
-EuropeanBasket basket(spot_prices, volatilities, weights, strike, maturity, 
-                      risk_free_rate, correlation_matrix, 100);
-
-// Baseline: no variance reduction
-MonteCarloSummary baseline = basket.PriceFixedN(&rng, 10000);
-std::cout << "Baseline variance: " << baseline.sampleVariance << std::endl;
-
-// Antithetic: pair-averaged payoffs
-MonteCarloSummary antithetic = basket.PriceFixedNAntithetic(&rng, 5000);  // 5000 pairs = 10000 samples
-std::cout << "Antithetic variance: " << antithetic.sampleVariance << std::endl;
-
-// Control variate: static beta from pilot
-MonteCarloSummary control = basket.PriceFixedNControlVariate(&rng, 10000, 500);
-std::cout << "Control variate variance: " << control.sampleVariance << std::endl;
-
-// Cumulative: antithetic + control variate
-MonteCarloSummary cumulative = basket.PriceFixedNCumulative(&rng, 5000, 500);
-std::cout << "Cumulative variance: " << cumulative.sampleVariance << std::endl;
-
-// Variance Reduction Factor = 1 - (var_reduced / var_baseline)
-double vrf_antithetic = 1.0 - (antithetic.sampleVariance / baseline.sampleVariance);
-double vrf_control = 1.0 - (control.sampleVariance / baseline.sampleVariance);
-double vrf_cumulative = 1.0 - (cumulative.sampleVariance / baseline.sampleVariance);
-
-std::cout << "\nVariance Reduction Factors:\n";
-std::cout << "  Antithetic: " << (vrf_antithetic * 100.0) << "%\n";
-std::cout << "  Control Variate: " << (vrf_control * 100.0) << "%\n";
-std::cout << "  Cumulative: " << (vrf_cumulative * 100.0) << "%\n";
-```
-
----
-
-## 5. Efficiency Study: nb_steps Trade-off
-```cpp
-#include <chrono>
-
-std::vector<size_t> nb_steps_configs = {25, 50, 100, 250, 500, 1000};
-
-std::cout << "nb_steps | Time(ms) | Variance | Accuracy vs 1000 steps\n";
-std::cout << "---------|----------|----------|---------------------\n";
-
-for (size_t nb_steps : nb_steps_configs) {
-  EuropeanBasket basket(spot_prices, volatilities, weights, strike, maturity, 
-                        risk_free_rate, correlation_matrix, nb_steps);
-  
-  auto start = std::chrono::high_resolution_clock::now();
+  EcuyerCombined rng(12345, 67890);
   MonteCarloSummary result = basket.PriceFixedN(&rng, 10000);
-  auto end = std::chrono::high_resolution_clock::now();
-  
-  auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-  
-  std::cout << nb_steps << " | " << duration_ms << " | " 
-            << result.sampleVariance << " | " 
-            << ((nb_steps < 1000) ? "reference points" : "reference")
-            << "\n";
+
+  std::cout << "Price: " << result.mean << "\n";
+  std::cout << "Std error: " << result.standardError << "\n";
+  std::cout << "95% CI: ["
+            << result.confidenceInterval.lower << ", "
+            << result.confidenceInterval.upper << "]\n";
 }
-// Shows linear speed-up: 2x steps ≈ 2x time
-// Shows accuracy improvement: more steps = lower variance in samples
 ```
 
----
+## 6. Generate Report Data
 
-## 6. Quasirandom Sampling with Custom Steps
-```cpp
-#include "UniformGenerator/HaltonQuasiRandom.h"
-
-// Quasirandom + moderate discretization
-EuropeanBasket basket_qr_200(spot_prices, volatilities, weights, strike, maturity, 
-                              risk_free_rate, correlation_matrix, 200);
-
-HaltonQuasiRandom halton_gen(3, true, 0.314159);  // 3D, with shift, seed=pi
-MonteCarloSummary qr_result = basket_qr_200.PriceFixedNCumulative(&halton_gen, 5000, 250);
-
-std::cout << "Quasirandom + antithetic + control variate:\n";
-std::cout << "  Price: " << qr_result.mean << "\n";
-std::cout << "  SE: " << qr_result.standardError << "\n";
-std::cout << "  95% CI: [" << (qr_result.mean - qr_result.confidenceIntervalHalfWidth) << ", " 
-                               << (qr_result.mean + qr_result.confidenceIntervalHalfWidth) << "]\n";
-```
-
----
-
-## 7. Comparing Antithetic-Only vs Antithetic+Control
-```cpp
-// Performance analysis of new SinglePathAntitheticPayoffOnly() optimization
-
-// BEFORE (old way): Computes control and discards it
-MonteCarloSummary result_old = basket.PriceFixedNAntithetic(&rng, 5000);
-
-// AFTER (new way): Uses optimized method, no wasted control computation
-// (same result, faster computation)
-MonteCarloSummary result_new = basket.PriceFixedNAntithetic(&rng, 5000);
-
-// Prices should be comparable (some Monte Carlo randomness expected)
-std::cout << "Antithetic (new optimized): " << result_new.mean << std::endl;
-
-// Speed benefit visible in profiler: one basket-value computation avoided per sample
-```
-
----
-
-## 8. Parameter Sensitivity Analysis
-```cpp
-// Study how nb_steps affects final estimate stability
-const size_t num_configs = 5;
-std::vector<size_t> steps = {50, 100, 200, 500, 1000};
-
-for (size_t nb : steps) {
-  std::vector<double> prices;
-  
-  for (int run = 0; run < 10; ++run) {  // 10 independent runs
-    EuropeanBasket basket(spot_prices, volatilities, weights, strike, maturity, 
-                          risk_free_rate, correlation_matrix, nb);
-    MonteCarloSummary result = basket.PriceFixedN(&rng, 5000);
-    prices.push_back(result.mean);
-  }
-  
-  // Compute mean and std of the 10 runs
-  double mean_price = prices[0];  // simplified for brevity
-  double stability = prices[prices.size()-1] - prices[0];  // range
-  
-  std::cout << "nb_steps=" << nb << ": mean estimator range = " << stability << std::endl;
-}
-// Insight: More steps → tighter distribution of estimates → more stable pricing
-```
-
----
-
-## 9. Professor's Configuration at Project End
-```cpp
-// CONFIGURATION: Tune these based on your accuracy/speed priorities
-
-// Option A: Fast production environment
-#define PRODUCTION_NB_STEPS 100
-#define PRODUCTION_SAMPLES 10000
-#define PRODUCTION_PILOT 500
-
-// Option B: Accuracy-critical research
-#define RESEARCH_NB_STEPS 500
-#define RESEARCH_SAMPLES 50000
-#define RESEARCH_PILOT 1000
-
-// Option C: Real-time pricing (minimal latency)
-#define REALTIME_NB_STEPS 50
-#define REALTIME_SAMPLES 5000
-#define REALTIME_PILOT 200
-
-// Use in code:
-#ifdef ACCURATE_MODE
-  EuropeanBasket basket(..., RESEARCH_NB_STEPS);
-  MonteCarloSummary result = basket.PriceFixedNCumulative(&rng, RESEARCH_SAMPLES, RESEARCH_PILOT);
-#else
-  EuropeanBasket basket(..., PRODUCTION_NB_STEPS);
-  MonteCarloSummary result = basket.PriceFixedNCumulative(&rng, PRODUCTION_SAMPLES, PRODUCTION_PILOT);
-#endif
-```
-
----
-
-## Key Design Principles Demonstrated
-
-✓ **Parameterization**: Every decision (nb_steps, samples, pilot_count) is controllable
-✓ **Defaults**: Sensible defaults (100 steps, 500 pilot) work out-of-box
-✓ **Backward Compatible**: Existing code works without modification
-✓ **Performance**: Optimized paths (SinglePathAntitheticPayoffOnly) avoid waste
-✓ **Flexibility**: Easy to create configurations for different use cases
-✓ **Professor Control**: University researcher can tune all parameters at project end
-
----
-
-## Compile & Run Instructions
+Run:
 
 ```bash
-cd RandomNumberGeneration/build
-cmake --build . --target test_phase3
-./test_phase3.exe
-
-# Or run the number-generation app
-./number_generation_app.exe
+./build/report_results.exe
 ```
+
+This creates:
+
+```text
+report_results.csv
+```
+
+The CSV includes:
+
+- price,
+- sample variance,
+- standard error,
+- confidence interval,
+- variance reduction factor,
+- required sample-size gain.
+
+Use this file for report tables and graphs.
+
+## 7. Run The Number-Generation App
+
+The original random-number-generation part of the project can be run with:
+
+```bash
+./build/number_generation_app.exe
+```
+
+This app is not the final pricing application. It is a console tool for trying the random generators and distributions.

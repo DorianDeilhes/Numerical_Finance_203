@@ -9,6 +9,18 @@ temp/
 temp_compiler_output.txt
 
 # ----------------------------------------------------------------------
+# Old local generator test experiments
+# The public CMake/CTest suite keeps only the maintained tests.
+# ----------------------------------------------------------------------
+tests/test_all_generators.cpp
+tests/test_cont2.cpp
+tests/test_continuous.cpp
+tests/test_discrete.cpp
+tests/test_ecuyer.cpp
+tests/test_generators.cpp
+tests/test_lcg.cpp
+
+# ----------------------------------------------------------------------
 # Generated report/result artifacts
 # Keep the source programs tracked, but regenerate their outputs locally.
 # ----------------------------------------------------------------------
