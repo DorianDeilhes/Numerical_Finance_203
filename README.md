@@ -38,6 +38,7 @@ ctest --test-dir build --output-on-failure
 - `professor_smoke_test`: fixed demo to check that the pricing workflow works.
 - `professor_editable_scenario`: main executable for a user-defined product and pricer configuration.
 - `report_results`: generates `report_results.csv` locally for report tables and graphs.
+- `pde_vanilla_call_demo`: optional one-asset European call PDE benchmark.
 - `number_generation_app`: console app for the original random-number-generation part of the project.
 
 On Windows with Git Bash, run for example:

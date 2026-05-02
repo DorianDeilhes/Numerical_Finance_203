@@ -25,9 +25,10 @@ void PDEGridExplicit::FillNodes() {
       const double bjk_h0_h1 = h0 * (*b)(x, t) / h1;
 
       Nodes[k - 1][j] =
-          Nodes[k][j] * (1.0 - ajk_h0_h1_sq - bjk_h0_h1 - h0 * (*r)(x, t)) +
-          Nodes[k][j + 1] * (bjk_h0_h1 + 0.5 * ajk_h0_h1_sq) +
-          Nodes[k][j - 1] * (0.5 * ajk_h0_h1_sq) + h0 * (*f)(x, t);
+          Nodes[k][j] * (1.0 - 2.0 * ajk_h0_h1_sq - bjk_h0_h1 -
+                         h0 * (*r)(x, t)) +
+          Nodes[k][j + 1] * (bjk_h0_h1 + ajk_h0_h1_sq) +
+          Nodes[k][j - 1] * ajk_h0_h1_sq + h0 * (*f)(x, t);
     }
   }
 }

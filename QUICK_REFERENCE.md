@@ -27,6 +27,7 @@ Git Bash:
 ./build/professor_smoke_test.exe
 ./build/professor_editable_scenario.exe
 ./build/report_results.exe
+./build/pde_vanilla_call_demo.exe
 ./build/number_generation_app.exe
 ```
 
@@ -36,6 +37,7 @@ PowerShell:
 .\build\professor_smoke_test.exe
 .\build\professor_editable_scenario.exe
 .\build\report_results.exe
+.\build\pde_vanilla_call_demo.exe
 .\build\number_generation_app.exe
 ```
 
@@ -45,6 +47,7 @@ PowerShell:
 ./build/professor_smoke_test
 ./build/professor_editable_scenario
 ./build/report_results
+./build/pde_vanilla_call_demo
 ./build/number_generation_app
 ```
 
@@ -55,6 +58,7 @@ PowerShell:
 | `professor_smoke_test` | Fixed demo to check that pricing works. |
 | `professor_editable_scenario` | Main file for custom products and pricer settings. |
 | `report_results` | Creates local `report_results.csv` for tables and graphs. |
+| `pde_vanilla_call_demo` | Optional one-asset European call PDE benchmark. |
 | `number_generation_app` | Original random generator demo, not the final pricing app. |
 
 ## Custom Scenario

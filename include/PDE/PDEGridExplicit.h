@@ -9,9 +9,9 @@
  *   - Backward time marching from T to 0
  *   - For each interior node (k,j), uses explicit formula:
  *
- *     V(k-1,j) = V(k,j) * (1 - A - B - h0*r)
- *              + V(k,j+1) * (B + 0.5*A)
- *              + V(k,j-1) * (0.5*A)
+ *     V(k-1,j) = V(k,j) * (1 - 2A - B - h0*r)
+ *              + V(k,j+1) * (B + A)
+ *              + V(k,j-1) * A
  *              + h0*f
  *
  *   where:

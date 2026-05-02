@@ -71,15 +71,15 @@ void PDEGridTheta::FillNodes() {
 
       // Explicit part: evaluated on row k (known values Nodes[k][...]).
       // This is the contribution multiplied by (1 - theta).
-      const double lower_exp = 0.5 * A_curr;
-      const double center_exp = -A_curr - B_curr - h0 * r_curr;
-      const double upper_exp = B_curr + 0.5 * A_curr;
+      const double lower_exp = A_curr;
+      const double center_exp = -2.0 * A_curr - B_curr - h0 * r_curr;
+      const double upper_exp = B_curr + A_curr;
 
       // Implicit part: evaluated on row k-1 (unknown values Nodes[k-1][...]).
       // This is the contribution multiplied by theta.
-      const double lower_imp = 0.5 * A_prev;
-      const double center_imp = -A_prev - B_prev - h0 * r_prev;
-      const double upper_imp = B_prev + 0.5 * A_prev;
+      const double lower_imp = A_prev;
+      const double center_imp = -2.0 * A_prev - B_prev - h0 * r_prev;
+      const double upper_imp = B_prev + A_prev;
 
       // Final theta-combination:
       //   explicitWeight * explicit part + implicitWeight * implicit part = 0

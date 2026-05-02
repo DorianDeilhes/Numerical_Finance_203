@@ -50,6 +50,7 @@ add_project_executable(number_generation_app number_generation_app.cpp)
 add_project_executable(professor_smoke_test professor_smoke_test.cpp)
 add_project_executable(professor_editable_scenario professor_editable_scenario.cpp)
 add_project_executable(report_results report_results.cpp)
+add_project_executable(pde_vanilla_call_demo pde_vanilla_call_demo.cpp)
 
 # ----------------------------------------------------------------------
 # Test executables
@@ -75,3 +76,4 @@ add_test(NAME phase3_tests COMMAND test_phase3)
 add_test(NAME bermudan_tests COMMAND test_bermudan)
 add_test(NAME phase6_stress_tests COMMAND test_phase6_stress)
 add_test(NAME professor_smoke_test COMMAND professor_smoke_test)
+add_test(NAME pde_vanilla_call_demo COMMAND pde_vanilla_call_demo)

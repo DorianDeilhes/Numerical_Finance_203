@@ -31,6 +31,11 @@ void PDEGridImplicit::FillNodes() {
 
     const double t = static_cast<double>(k) * h0;
 
+    center[0] = 1.0;
+    rhs[0] = (*BottomBoundaryFunction)(static_cast<double>(k - 1) * h0);
+    center[NodesWidth - 1] = 1.0;
+    rhs[NodesWidth - 1] = (*TopBoundaryFunction)(static_cast<double>(k - 1) * h0);
+
     // Build tridiagonal system for interior nodes
     for (size_t j = 1; j + 1 < NodesWidth; ++j) {
       const double x = MinX + static_cast<double>(j) * h1;
@@ -41,19 +46,13 @@ void PDEGridImplicit::FillNodes() {
       const double fjk = (*f)(x, t);
 
       // Coefficients for the implicit scheme:
-      // -0.5*A * V[j-1] + (1 + A + B + h0*r) * V[j] - (B + 0.5*A) * V[j+1] = V[k,j] + h0*f
-      lower[j] = -0.5 * ajk_h0_h1_sq;
-      center[j] = 1.0 + ajk_h0_h1_sq + bjk_h0_h1 + h0 * rjk;
-      upper[j] = -(bjk_h0_h1 + 0.5 * ajk_h0_h1_sq);
+      // -A * V[j-1] + (1 + 2A + B + h0*r) * V[j]
+      // - (B + A) * V[j+1] = V[k,j] + h0*f
+      lower[j] = -ajk_h0_h1_sq;
+      center[j] = 1.0 + 2.0 * ajk_h0_h1_sq + bjk_h0_h1 + h0 * rjk;
+      upper[j] = -(bjk_h0_h1 + ajk_h0_h1_sq);
       rhs[j] = Nodes[k][j] + h0 * fjk;
     }
-
-    // Handle boundary conditions
-    // Left boundary (j=0): V[k-1,0] is set by BottomBoundaryFunction
-    rhs[0] = (*BottomBoundaryFunction)(static_cast<double>(k - 1) * h0);
-
-    // Right boundary (j=NodesWidth-1): V[k-1,NodesWidth-1] is set by TopBoundaryFunction
-    rhs[NodesWidth - 1] = (*TopBoundaryFunction)(static_cast<double>(k - 1) * h0);
 
     // Solve tridiagonal system using Thomas algorithm (forward elimination)
     std::vector<double> c_prime(NodesWidth);
@@ -63,7 +62,7 @@ void PDEGridImplicit::FillNodes() {
     d_prime[0] = rhs[0];
 
     for (size_t j = 1; j < NodesWidth; ++j) {
-      double denom = center[j] + lower[j] * c_prime[j - 1];
+      double denom = center[j] - lower[j] * c_prime[j - 1];
       if (std::fabs(denom) < 1e-14) {
         denom = 1e-14; // Avoid division by zero
       }

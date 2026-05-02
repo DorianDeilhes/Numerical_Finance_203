@@ -87,6 +87,7 @@ Makefile
 /professor_smoke_test
 /professor_editable_scenario
 /report_results
+/pde_vanilla_call_demo
 /test_all_fixed
 /test_sde_fixed
 /test_mc_core
