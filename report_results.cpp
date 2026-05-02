@@ -294,7 +294,7 @@ void WriteCsvRow(std::ostream& out, const ReportRow& row) {
 }
 
 void PrintConsoleRow(const ReportRow& row) {
-  std::cout << std::left << std::setw(22) << row.scenario_name
+  std::cout << std::left << std::setw(30) << row.scenario_name
             << std::setw(10) << row.exercise_style
             << std::setw(50) << row.method_name
             << "price=" << std::setw(12) << row.price
@@ -314,17 +314,17 @@ BasketOptionProduct BuildBalancedTwoAssetScenario(ExerciseStyle exercise_style) 
   product.maturity = 1.0;
   product.risk_free_rate = 0.03;
   product.correlation_matrix = {{1.0, 0.35}, {0.35, 1.0}};
-  product.exercise_dates = {0.25, 0.50, 0.75, 1.0};
+  product.exercise_dates = {0.0, 0.25, 0.50, 0.75, 1.0};
   return product;
 }
 
-BasketOptionProduct BuildMixedWeightThreeAssetScenario(ExerciseStyle exercise_style) {
+BasketOptionProduct BuildPositiveWeightThreeAssetScenario(ExerciseStyle exercise_style) {
   BasketOptionProduct product;
-  product.scenario_name = "mixed_weights_3_assets";
+  product.scenario_name = "positive_weights_3_assets";
   product.exercise_style = exercise_style;
   product.spot_prices = {100.0, 95.0, 110.0};
   product.volatilities = {0.18, 0.22, 0.30};
-  product.weights = {0.70, 0.50, -0.20};
+  product.weights = {0.50, 0.30, 0.20};
   product.strike = 102.0;
   product.maturity = 1.0;
   product.risk_free_rate = 0.03;
@@ -333,7 +333,7 @@ BasketOptionProduct BuildMixedWeightThreeAssetScenario(ExerciseStyle exercise_st
       {0.20, 1.0, 0.25},
       {-0.10, 0.25, 1.0}
   };
-  product.exercise_dates = {0.25, 0.50, 0.75, 1.0};
+  product.exercise_dates = {0.0, 0.25, 0.50, 0.75, 1.0};
   return product;
 }
 
@@ -354,8 +354,8 @@ std::vector<BasketOptionProduct> BuildReportProducts() {
   std::vector<BasketOptionProduct> products;
   products.push_back(BuildBalancedTwoAssetScenario(EuropeanStyle));
   products.push_back(BuildBalancedTwoAssetScenario(BermudanStyle));
-  products.push_back(BuildMixedWeightThreeAssetScenario(EuropeanStyle));
-  products.push_back(BuildMixedWeightThreeAssetScenario(BermudanStyle));
+  products.push_back(BuildPositiveWeightThreeAssetScenario(EuropeanStyle));
+  products.push_back(BuildPositiveWeightThreeAssetScenario(BermudanStyle));
   return products;
 }
 

@@ -64,10 +64,10 @@ class EuropeanBasket {
   // Single path payoff: simulate one trajectory, return discounted payoff.
   double SinglePathPayoff(UniformGenerator* uniform_gen);
 
-  // Single-path control variate pair (target payoff, discounted basket control).
+  // Single-path control variate pair using the lecture geometric basket control.
   std::pair<double, double> SinglePathPayoffAndControl(UniformGenerator* uniform_gen);
 
-  // Antithetic pair of target and control samples.
+  // Antithetic pair of target and geometric control samples.
   std::pair<double, double> SinglePathAntitheticAverages(UniformGenerator* uniform_gen);
 
   // Antithetic payoff only (optimized for antithetic-only modes, no control computation).

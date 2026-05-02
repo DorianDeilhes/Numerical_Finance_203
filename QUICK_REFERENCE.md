@@ -88,7 +88,7 @@ In `BuildProductToModify()`:
 | `maturity` | Maturity `T`, in years. |
 | `risk_free_rate` | Constant risk-free rate `r`. |
 | `correlation_matrix` | Square correlation matrix matching the basket dimension. |
-| `exercise_dates` | Bermudan exercise dates. Ignored for European products. |
+| `exercise_dates` | Bermudan exercise dates. First date may be `0.0`; last date must be maturity. Ignored for European products. |
 
 ## Pricer Settings
 
@@ -96,7 +96,7 @@ In `BuildPricerConfigToModify()`:
 
 | Setting | Meaning |
 |---|---|
-| `pricing_method` | `BasicMonteCarlo`, `StaticControlVariate`, `AntitheticVariables`, or `CumulativeVarianceReduction`. |
+| `pricing_method` | `BasicMonteCarlo`, `StaticControlVariate`, `AntitheticVariables`, or `CumulativeVarianceReduction`. Control-variate modes require non-negative weights summing to `1`. |
 | `random_generator` | `PseudoRandom` or `QuasiRandom`. |
 | `nb_steps` | Black-Scholes time steps. Bermudan dates must align with this grid. |
 | `path_count` | Number of paths for basic and control-variate pricing. |

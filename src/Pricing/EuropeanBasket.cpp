@@ -6,9 +6,9 @@
 #include "MonteCarlo/Helper/SimulateGeometricBrownianTerminalNDAntithetic.h"
 #include "Pricing/Helper/ApplyControlVariate.h"
 #include "Pricing/Helper/BuildLoadingMatrixFromCorrelation.h"
-#include "Pricing/Helper/DiscountedBasketValue.h"
+#include "Pricing/Helper/DiscountedGeometricBasketCall.h"
 #include "Pricing/Helper/EstimateControlVariateBeta.h"
-#include "Pricing/Helper/KnownMeanDiscountedBasketValue.h"
+#include "Pricing/Helper/KnownMeanDiscountedGeometricBasketCall.h"
 #include "Pricing/Helper/ValidateEuropeanBasketInputs.h"
 #include "Pricing/Helper/ValidatePricingMethodInputs.h"
 #include <cmath>
@@ -62,8 +62,8 @@ std::pair<double, double> EuropeanBasket::SinglePathPayoffAndControl(
   const double targetSample =
       MonteCarloHelper::DiscountPayoff(callPayoff, risk_free_rate_, maturity_);
 
-  const double controlSample = PricingHelper::DiscountedBasketValue(
-      terminalSpots, weights_, risk_free_rate_, maturity_);
+  const double controlSample = PricingHelper::DiscountedGeometricBasketCall(
+      terminalSpots, weights_, strike_, risk_free_rate_, maturity_);
 
   return std::make_pair(targetSample, controlSample);
 }
@@ -86,10 +86,10 @@ std::pair<double, double> EuropeanBasket::SinglePathAntitheticAverages(
       MonteCarloHelper::DiscountPayoff(antiCall, risk_free_rate_, maturity_);
   const double targetAverage = 0.5 * (targetDirect + targetAnti);
 
-  const double controlDirect = PricingHelper::DiscountedBasketValue(
-      terminals.direct, weights_, risk_free_rate_, maturity_);
-  const double controlAnti = PricingHelper::DiscountedBasketValue(
-      terminals.antithetic, weights_, risk_free_rate_, maturity_);
+  const double controlDirect = PricingHelper::DiscountedGeometricBasketCall(
+      terminals.direct, weights_, strike_, risk_free_rate_, maturity_);
+  const double controlAnti = PricingHelper::DiscountedGeometricBasketCall(
+      terminals.antithetic, weights_, strike_, risk_free_rate_, maturity_);
   const double controlAverage = 0.5 * (controlDirect + controlAnti);
 
   return std::make_pair(targetAverage, controlAverage);
@@ -171,6 +171,10 @@ MonteCarloSummary EuropeanBasket::PriceFixedNControlVariate(UniformGenerator* un
                                       "EuropeanBasket::PriceFixedNControlVariate",
                                       "pilot_count");
 
+  const double controlMean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
+      spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
+      correlation_matrix_);
+
   std::vector<double> pilotTarget;
   std::vector<double> pilotControl;
   pilotTarget.reserve(pilot_count);
@@ -183,8 +187,6 @@ MonteCarloSummary EuropeanBasket::PriceFixedNControlVariate(UniformGenerator* un
   }
 
   const double beta = PricingHelper::EstimateControlVariateBeta(pilotTarget, pilotControl);
-  const double controlMean =
-      PricingHelper::KnownMeanDiscountedBasketValue(spot_prices_, weights_);
 
   const std::function<double()> correctedSampler = [this, uniform_gen, beta, controlMean]() {
     const std::pair<double, double> sample = SinglePathPayoffAndControl(uniform_gen);
@@ -204,6 +206,10 @@ MonteCarloSummary EuropeanBasket::PriceFixedNCumulative(UniformGenerator* unifor
   PricingHelper::ValidateCountAtLeast(pilot_count, 2,
                                       "EuropeanBasket::PriceFixedNCumulative", "pilot_count");
 
+  const double controlMean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
+      spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
+      correlation_matrix_);
+
   std::vector<double> pilotTarget;
   std::vector<double> pilotControl;
   pilotTarget.reserve(pilot_count);
@@ -216,8 +222,6 @@ MonteCarloSummary EuropeanBasket::PriceFixedNCumulative(UniformGenerator* unifor
   }
 
   const double beta = PricingHelper::EstimateControlVariateBeta(pilotTarget, pilotControl);
-  const double controlMean =
-      PricingHelper::KnownMeanDiscountedBasketValue(spot_prices_, weights_);
 
   const std::function<double()> correctedSampler = [this, uniform_gen, beta, controlMean]() {
     const std::pair<double, double> sample = SinglePathAntitheticAverages(uniform_gen);

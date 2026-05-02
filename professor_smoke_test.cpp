@@ -49,7 +49,7 @@ BasketOptionProduct BuildBaseProduct(ExerciseStyle exercise_style) {
   product.correlation_matrix = {{1.0, 0.35}, {0.35, 1.0}};
 
   if (exercise_style == BermudanStyle) {
-    product.exercise_dates = {0.25, 0.50, 0.75, 1.0};
+    product.exercise_dates = {0.0, 0.25, 0.50, 0.75, 1.0};
   }
 
   return product;
@@ -57,12 +57,12 @@ BasketOptionProduct BuildBaseProduct(ExerciseStyle exercise_style) {
 
 BasketPricerConfig BuildBasePricerConfig() {
   BasketPricerConfig config;
-  config.nb_steps = 40;
-  config.path_count = 250;
-  config.pair_count = 180;
-  config.pilot_count = 80;
-  // For this two-asset, 40-step example, one path consumes about 80 uniforms.
-  config.halton_dimension = 80;
+  config.nb_steps = 4;
+  config.path_count = 3000;
+  config.pair_count = 1500;
+  config.pilot_count = 700;
+  // For this two-asset, 4-step example, one path consumes about 8 uniforms.
+  config.halton_dimension = 8;
   return config;
 }
 

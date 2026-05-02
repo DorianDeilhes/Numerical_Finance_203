@@ -44,7 +44,7 @@ BermudanBasket BuildReferenceBermudan(size_t nb_steps = 60) {
   const double maturity = 1.0;
   const double rate = 0.03;
   std::vector<std::vector<double>> corr = {{1.0, 0.35}, {0.35, 1.0}};
-  std::vector<double> exercise_dates = {0.25, 0.5, 0.75, 1.0};
+  std::vector<double> exercise_dates = {0.0, 0.25, 0.5, 0.75, 1.0};
 
   return BermudanBasket(spot, vol, weights, strike, maturity, rate, corr,
                         exercise_dates, nb_steps);
@@ -245,6 +245,24 @@ void TestPhase5ValidationErrors() {
 
   ExpectThrows("Should reject pilot_count < 2 in cumulative", [&]() {
     (void)bermudan.PriceFixedNCumulative(&rng, 20, 1);
+  });
+
+  BermudanBasket negative_weight_bermudan({100.0, 105.0}, {0.2, 0.25},
+                                          {0.7, -0.2}, 100.0, 1.0, 0.03,
+                                          {{1.0, 0.35}, {0.35, 1.0}},
+                                          {0.0, 0.5, 1.0}, 20);
+  ExpectThrows("Bermudan control variate should reject negative weights", [&]() {
+    EcuyerCombined local_rng(33333, 44444);
+    (void)negative_weight_bermudan.PriceFixedNControlVariate(&local_rng, 10, 5);
+  });
+
+  BermudanBasket non_normalized_weight_bermudan({100.0, 105.0}, {0.2, 0.25},
+                                                {0.7, 0.2}, 100.0, 1.0, 0.03,
+                                                {{1.0, 0.35}, {0.35, 1.0}},
+                                                {0.0, 0.5, 1.0}, 20);
+  ExpectThrows("Bermudan control variate should reject weights not summing to 1", [&]() {
+    EcuyerCombined local_rng(55555, 66666);
+    (void)non_normalized_weight_bermudan.PriceFixedNCumulative(&local_rng, 10, 5);
   });
 }
 

@@ -257,6 +257,22 @@ void TestPublicPricingValidationErrors() {
   ExpectThrows("Should reject pilot count < 2 in cumulative", [&]() {
     (void)basket.PriceFixedNCumulative(&uniform, 10, 1);
   });
+
+  EuropeanBasket negative_weight_basket({100.0, 105.0}, {0.2, 0.25},
+                                        {0.7, -0.2}, 100.0, 1.0, 0.05,
+                                        {{1.0, 0.3}, {0.3, 1.0}}, 20);
+  ExpectThrows("Control variate should reject negative weights", [&]() {
+    EcuyerCombined rng(11111, 22222);
+    (void)negative_weight_basket.PriceFixedNControlVariate(&rng, 10, 5);
+  });
+
+  EuropeanBasket non_normalized_weight_basket({100.0, 105.0}, {0.2, 0.25},
+                                              {0.7, 0.2}, 100.0, 1.0, 0.05,
+                                              {{1.0, 0.3}, {0.3, 1.0}}, 20);
+  ExpectThrows("Control variate should reject weights not summing to 1", [&]() {
+    EcuyerCombined rng(33333, 44444);
+    (void)non_normalized_weight_basket.PriceFixedNCumulative(&rng, 10, 5);
+  });
 }
 
 }  // namespace

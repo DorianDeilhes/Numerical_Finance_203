@@ -2,6 +2,7 @@
 # Private/local project material
 # ----------------------------------------------------------------------
 information/
+user_guide_draft/
 tmp/
 temp/
 *.tmp
@@ -28,6 +29,15 @@ report_results.csv
 *.aux
 *.log
 *.pdf
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
 
 # ----------------------------------------------------------------------
 # CMake and build directories

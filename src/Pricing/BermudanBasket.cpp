@@ -14,10 +14,11 @@
 #include "Pricing/Helper/BermudanImmediateExerciseCall.h"
 #include "Pricing/Helper/BuildLoadingMatrixFromCorrelation.h"
 #include "Pricing/Helper/ConvertExerciseDatesToStepIndices.h"
+#include "Pricing/Helper/DiscountedGeometricBasketCall.h"
 #include "Pricing/Helper/EstimateControlVariateBeta.h"
 #include "Pricing/Helper/EstimateQuadraticContinuationCoefficients.h"
 #include "Pricing/Helper/EvaluateQuadraticContinuation.h"
-#include "Pricing/Helper/KnownMeanDiscountedBasketValue.h"
+#include "Pricing/Helper/KnownMeanDiscountedGeometricBasketCall.h"
 #include "Pricing/Helper/ValidateBermudanBasketInputs.h"
 #include "Pricing/Helper/ValidatePricingMethodInputs.h"
 
@@ -139,6 +140,71 @@ std::vector<std::vector<double>> BermudanBasket::SimulateAntitheticBasketStatesB
   return basket_states_by_date;
 }
 
+BermudanBasket::BasketStateSimulation
+BermudanBasket::SimulateBasketStatesAndGeometricControlsByDate(UniformGenerator* uniform_gen,
+                                                               size_t path_count) {
+  const size_t exercise_count = exercise_dates_.size();
+  BasketStateSimulation simulation;
+  simulation.basket_states_by_date.assign(
+      exercise_count, std::vector<double>(path_count, 0.0));
+  simulation.geometric_controls.assign(path_count, 0.0);
+
+  const std::vector<size_t> step_indices =
+      PricingHelper::ConvertExerciseDatesToStepIndices(exercise_dates_, maturity_, nb_steps_);
+
+  for (size_t path = 0; path < path_count; ++path) {
+    const std::vector<std::vector<double>> spots_by_exercise =
+        MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesND(
+            uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
+            maturity_, nb_steps_, step_indices);
+
+    for (size_t k = 0; k < exercise_count; ++k) {
+      simulation.basket_states_by_date[k][path] =
+          PricingHelper::BasketValue(spots_by_exercise[k], weights_);
+    }
+
+    simulation.geometric_controls[path] = PricingHelper::DiscountedGeometricBasketCall(
+        spots_by_exercise.back(), weights_, strike_, risk_free_rate_, maturity_);
+  }
+
+  return simulation;
+}
+
+BermudanBasket::BasketStateSimulation
+BermudanBasket::SimulateAntitheticBasketStatesAndGeometricControlsByDate(
+    UniformGenerator* uniform_gen,
+    size_t pair_count) {
+  const size_t exercise_count = exercise_dates_.size();
+  BasketStateSimulation simulation;
+  simulation.basket_states_by_date.assign(
+      exercise_count, std::vector<double>(2 * pair_count, 0.0));
+  simulation.geometric_controls.assign(2 * pair_count, 0.0);
+
+  const std::vector<size_t> step_indices =
+      PricingHelper::ConvertExerciseDatesToStepIndices(exercise_dates_, maturity_, nb_steps_);
+
+  for (size_t j = 0; j < pair_count; ++j) {
+    const MonteCarloHelper::ExerciseSpotsAntitheticPair spots_by_exercise =
+        MonteCarloHelper::SimulateGeometricBrownianSpotsAtStepIndicesNDAntithetic(
+            uniform_gen, spot_prices_, volatilities_, risk_free_rate_, &loading_matrix_, 0.0,
+            maturity_, nb_steps_, step_indices);
+
+    for (size_t k = 0; k < exercise_count; ++k) {
+      simulation.basket_states_by_date[k][j] =
+          PricingHelper::BasketValue(spots_by_exercise.direct[k], weights_);
+      simulation.basket_states_by_date[k][pair_count + j] =
+          PricingHelper::BasketValue(spots_by_exercise.antithetic[k], weights_);
+    }
+
+    simulation.geometric_controls[j] = PricingHelper::DiscountedGeometricBasketCall(
+        spots_by_exercise.direct.back(), weights_, strike_, risk_free_rate_, maturity_);
+    simulation.geometric_controls[pair_count + j] = PricingHelper::DiscountedGeometricBasketCall(
+        spots_by_exercise.antithetic.back(), weights_, strike_, risk_free_rate_, maturity_);
+  }
+
+  return simulation;
+}
+
 std::vector<double> BermudanBasket::ComputeDiscountedPathValues(
     const std::vector<std::vector<double>>& basket_states_by_date) {
   const size_t exercise_count = exercise_dates_.size();
@@ -238,53 +304,45 @@ std::vector<double> BermudanBasket::ComputeDiscountedPathValues(
   return X_j;
 }
 
-std::vector<double> BermudanBasket::ComputeDiscountedTerminalBasketControls(
-    const std::vector<std::vector<double>>& basket_states_by_date) {
-  const size_t exercise_count = exercise_dates_.size();
-  if (basket_states_by_date.size() != exercise_count) {
-    throw std::runtime_error(
-        "BermudanBasket::ComputeDiscountedTerminalBasketControls requires one row per exercise date");
-  }
-  if (basket_states_by_date.empty() || basket_states_by_date.back().empty()) {
-    throw std::runtime_error(
-        "BermudanBasket::ComputeDiscountedTerminalBasketControls requires non-empty path states");
-  }
-
-  const size_t path_count = basket_states_by_date.back().size();
-  const double maturity_discount = std::exp(-risk_free_rate_ * maturity_);
-  std::vector<double> Y_j(path_count, 0.0);
-  for (size_t j = 0; j < path_count; ++j) {
-    Y_j[j] = maturity_discount * basket_states_by_date.back()[j];
-  }
-  return Y_j;
-}
-
 std::pair<std::vector<double>, std::vector<double>> BermudanBasket::BuildPathValuesAndControls(
     UniformGenerator* uniform_gen,
     size_t path_count) {
-  const std::vector<std::vector<double>> basket_states_by_date =
-      SimulateBasketStatesByDate(uniform_gen, path_count);
-  const std::vector<double> X_j = ComputeDiscountedPathValues(basket_states_by_date);
-  const std::vector<double> Y_j =
-      ComputeDiscountedTerminalBasketControls(basket_states_by_date);
+  const BasketStateSimulation simulation =
+      SimulateBasketStatesAndGeometricControlsByDate(uniform_gen, path_count);
+  const std::vector<double> X_j =
+      ComputeDiscountedPathValues(simulation.basket_states_by_date);
 
-  return std::make_pair(X_j, Y_j);
+  return std::make_pair(X_j, simulation.geometric_controls);
+}
+
+std::vector<double> BermudanBasket::BuildAntitheticPairValues(UniformGenerator* uniform_gen,
+                                                              size_t pair_count) {
+  const std::vector<std::vector<double>> basket_states_by_date =
+      SimulateAntitheticBasketStatesByDate(uniform_gen, pair_count);
+  const std::vector<double> X_j = ComputeDiscountedPathValues(basket_states_by_date);
+
+  std::vector<double> chi_j(pair_count, 0.0);
+  for (size_t j = 0; j < pair_count; ++j) {
+    chi_j[j] = 0.5 * (X_j[j] + X_j[pair_count + j]);
+  }
+
+  return chi_j;
 }
 
 std::pair<std::vector<double>, std::vector<double>>
 BermudanBasket::BuildAntitheticPairValuesAndControls(UniformGenerator* uniform_gen,
                                                      size_t pair_count) {
-  const std::vector<std::vector<double>> basket_states_by_date =
-      SimulateAntitheticBasketStatesByDate(uniform_gen, pair_count);
-  const std::vector<double> X_j = ComputeDiscountedPathValues(basket_states_by_date);
-  const std::vector<double> Y_j =
-      ComputeDiscountedTerminalBasketControls(basket_states_by_date);
+  const BasketStateSimulation simulation =
+      SimulateAntitheticBasketStatesAndGeometricControlsByDate(uniform_gen, pair_count);
+  const std::vector<double> X_j =
+      ComputeDiscountedPathValues(simulation.basket_states_by_date);
 
   std::vector<double> chi_j(pair_count, 0.0);
   std::vector<double> Y_chi_j(pair_count, 0.0);
   for (size_t j = 0; j < pair_count; ++j) {
     chi_j[j] = 0.5 * (X_j[j] + X_j[pair_count + j]);
-    Y_chi_j[j] = 0.5 * (Y_j[j] + Y_j[pair_count + j]);
+    Y_chi_j[j] = 0.5 * (simulation.geometric_controls[j] +
+                        simulation.geometric_controls[pair_count + j]);
   }
 
   return std::make_pair(chi_j, Y_chi_j);
@@ -324,12 +382,14 @@ MonteCarloSummary BermudanBasket::PriceFixedNControlVariate(UniformGenerator* un
                                       "BermudanBasket::PriceFixedNControlVariate",
                                       "pilot_count");
 
+  const double control_mean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
+      spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
+      correlation_matrix_);
+
   const std::pair<std::vector<double>, std::vector<double>> pilot_samples =
       BuildPathValuesAndControls(uniform_gen, pilot_count);
   const double beta = PricingHelper::EstimateControlVariateBeta(pilot_samples.first,
                                                                 pilot_samples.second);
-  const double control_mean =
-      PricingHelper::KnownMeanDiscountedBasketValue(spot_prices_, weights_);
 
   const std::pair<std::vector<double>, std::vector<double>> main_samples =
       BuildPathValuesAndControls(uniform_gen, path_count);
@@ -352,10 +412,8 @@ MonteCarloSummary BermudanBasket::PriceFixedNAntithetic(UniformGenerator* unifor
   PricingHelper::ValidateCountAtLeast(pair_count, 2,
                                       "BermudanBasket::PriceFixedNAntithetic", "pair_count");
 
-  const std::pair<std::vector<double>, std::vector<double>> pair_samples =
-      BuildAntitheticPairValuesAndControls(uniform_gen, pair_count);
-
-  return SummarizeSamples(pair_samples.first);
+  const std::vector<double> chi_j = BuildAntitheticPairValues(uniform_gen, pair_count);
+  return SummarizeSamples(chi_j);
 }
 
 MonteCarloSummary BermudanBasket::PriceFixedNCumulative(UniformGenerator* uniform_gen,
@@ -368,12 +426,14 @@ MonteCarloSummary BermudanBasket::PriceFixedNCumulative(UniformGenerator* unifor
   PricingHelper::ValidateCountAtLeast(pilot_count, 2,
                                       "BermudanBasket::PriceFixedNCumulative", "pilot_count");
 
+  const double control_mean = PricingHelper::KnownMeanDiscountedGeometricBasketCall(
+      spot_prices_, volatilities_, weights_, strike_, maturity_, risk_free_rate_,
+      correlation_matrix_);
+
   const std::pair<std::vector<double>, std::vector<double>> pilot_samples =
       BuildAntitheticPairValuesAndControls(uniform_gen, pilot_count);
   const double beta = PricingHelper::EstimateControlVariateBeta(pilot_samples.first,
                                                                 pilot_samples.second);
-  const double control_mean =
-      PricingHelper::KnownMeanDiscountedBasketValue(spot_prices_, weights_);
 
   const std::pair<std::vector<double>, std::vector<double>> main_samples =
       BuildAntitheticPairValuesAndControls(uniform_gen, pair_count);

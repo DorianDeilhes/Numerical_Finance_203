@@ -40,6 +40,11 @@ class BermudanBasket {
                                           size_t pilot_count = 500);
 
  private:
+  struct BasketStateSimulation {
+    std::vector<std::vector<double>> basket_states_by_date;
+    std::vector<double> geometric_controls;
+  };
+
   size_t dimension_;
   std::vector<double> spot_prices_;
   std::vector<double> volatilities_;
@@ -71,18 +76,28 @@ class BermudanBasket {
       UniformGenerator* uniform_gen,
       size_t pair_count);
 
+  // Simulate paths and keep both Longstaff-Schwarz states and geometric controls.
+  BasketStateSimulation SimulateBasketStatesAndGeometricControlsByDate(
+      UniformGenerator* uniform_gen,
+      size_t path_count);
+
+  // Simulate antithetic paths and keep geometric controls for direct and mirrored paths.
+  BasketStateSimulation SimulateAntitheticBasketStatesAndGeometricControlsByDate(
+      UniformGenerator* uniform_gen,
+      size_t pair_count);
+
   // Apply Longstaff-Schwarz decisions and return discounted samples X_j.
   std::vector<double> ComputeDiscountedPathValues(
-      const std::vector<std::vector<double>>& basket_states_by_date);
-
-  // Return the static controls Y_j = exp(-rT) * basket_T^j.
-  std::vector<double> ComputeDiscountedTerminalBasketControls(
       const std::vector<std::vector<double>>& basket_states_by_date);
 
   // Build paired samples (X_j, Y_j) for the static control variate.
   std::pair<std::vector<double>, std::vector<double>> BuildPathValuesAndControls(
       UniformGenerator* uniform_gen,
       size_t path_count);
+
+  // Build antithetic samples chi_j without constructing any control variate.
+  std::vector<double> BuildAntitheticPairValues(UniformGenerator* uniform_gen,
+                                                size_t pair_count);
 
   // Build paired antithetic samples (chi_j, Y_chi_j).
   std::pair<std::vector<double>, std::vector<double>> BuildAntitheticPairValuesAndControls(

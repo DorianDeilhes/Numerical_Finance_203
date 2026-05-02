@@ -123,10 +123,11 @@ BasketOptionProduct BuildProductToModify() {
   // Bermudan exercise dates in years. Used only when exercise_style is BermudanStyle.
   // The dates must be increasing, inside [0, maturity], end exactly at maturity,
   // and align with the simulation grid defined by nb_steps below.
-  // With maturity = 1.0 and nb_steps = 40, dates like 0.25, 0.50, 0.75, 1.0
-  // are aligned because the time step is 1.0 / 40 = 0.025.
+  // With maturity = 1.0 and nb_steps = 4, dates like
+  // 0.0, 0.25, 0.50, 0.75, 1.0 are aligned because the time step is
+  // 1.0 / 4 = 0.25. The first date may be 0.0, matching t0 = 0.
   // For EuropeanStyle, this vector is ignored by the pricing dispatch.
-  product.exercise_dates = {0.25, 0.50, 0.75, 1.0};
+  product.exercise_dates = {0.0, 0.25, 0.50, 0.75, 1.0};
   // ======================================================================
 
   return product;
@@ -138,11 +139,14 @@ BasketPricerConfig BuildPricerConfigToModify() {
   // ========================== EDIT PRICER HERE ==========================
   // Pricing method choices:
   // - BasicMonteCarlo: basic Monte Carlo with the selected random generator.
-  // - StaticControlVariate: uses Y_j = exp(-rT) * basket_T as control variate.
+  // - StaticControlVariate: uses the lecture geometric basket call control
+  //   Y_j = exp(-rT) * (prod_i S_i(T)^alpha_i - K)^+.
+  //   This method requires weights alpha_i >= 0 and sum_i alpha_i = 1.
   // - AntitheticVariables: pairs each path with opposite Gaussian shocks.
   // - CumulativeVarianceReduction: control variate + antithetic variables
   //   with the selected random generator. Use QuasiRandom here to match the
   //   project requirement "quasi + control variate + antithetic".
+  //   This also requires weights alpha_i >= 0 and sum_i alpha_i = 1.
   config.pricing_method = CumulativeVarianceReduction;
 
   // Random generator choices:
@@ -154,21 +158,21 @@ BasketPricerConfig BuildPricerConfigToModify() {
   // Number of Black-Scholes time steps between 0 and maturity.
   // Larger values can increase accuracy for path-dependent/exercise-date products,
   // but they also increase runtime. Bermudan exercise_dates must align with this grid.
-  config.nb_steps = 40;
+  config.nb_steps = 4;
 
   // Number of Monte Carlo paths for BasicMonteCarlo and StaticControlVariate.
   // Must be at least 2. Larger values reduce the standard error roughly as 1/sqrt(N).
-  config.path_count = 1000;
+  config.path_count = 3000;
 
   // Number of direct/antithetic pairs for AntitheticVariables and
   // CumulativeVarianceReduction. One pair means two simulated paths, but one
   // estimator sample chi_j = 0.5 * (X_direct + X_antithetic).
-  config.pair_count = 600;
+  config.pair_count = 1500;
 
   // Number of pilot samples used to estimate the control variate coefficient beta.
   // StaticControlVariate uses pilot_count paths.
   // CumulativeVarianceReduction uses pilot_count antithetic pairs.
-  config.pilot_count = 250;
+  config.pilot_count = 700;
 
   // Seeds for the EcuyerCombined pseudo-random generator.
   // Used only when random_generator = PseudoRandom.

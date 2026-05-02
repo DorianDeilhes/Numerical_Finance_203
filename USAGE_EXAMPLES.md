@@ -84,10 +84,11 @@ For `EuropeanStyle`, `exercise_dates` is ignored.
 
 ```cpp
 product.exercise_style = BermudanStyle;
-product.exercise_dates = {0.25, 0.50, 0.75, 1.0};
+product.exercise_dates = {0.0, 0.25, 0.50, 0.75, 1.0};
 ```
 
 The last date must be equal to `product.maturity`.
+The first date may be `0.0`, matching the statement notation `t0 = 0`.
 Dates must align with the simulation grid. For example, with:
 
 ```cpp
@@ -113,6 +114,11 @@ product.correlation_matrix = {
 ```
 
 The vectors and matrix must all match the same dimension.
+
+Negative weights are accepted by the basket payoff itself. However, the
+lecture geometric basket control variate requires non-negative weights summing
+to `1`. For a product with negative weights, use `BasicMonteCarlo`,
+`BasicMonteCarlo` with `QuasiRandom`, or `AntitheticVariables`.
 
 ## 4. Example Pricer Changes
 
@@ -145,6 +151,15 @@ config.path_count = 10000;
 config.pilot_count = 500;
 ```
 
+This uses the lecture geometric basket control:
+
+```text
+Y = exp(-rT) * (prod_i S_i(T)^alpha_i - K)^+
+```
+
+The analytic value of `E[Y]` is computed by the program. This method requires
+all weights to be non-negative and to sum to `1`.
+
 ### Antithetic Variables
 
 ```cpp
@@ -165,6 +180,7 @@ config.pilot_count = 500;
 ```
 
 This is the main full variance reduction mode for the project.
+It has the same weight restriction as `StaticControlVariate`.
 
 ## 5. Direct C++ API Example
 
