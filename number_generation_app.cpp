@@ -159,7 +159,7 @@ double getNonNegativeDouble(const string &prompt) {
 int main() {
   try {
     cout << "============================================" << endl;
-    cout << "   INTERACTIVE RANDOM NUMBER SIMULATOR      " << endl;
+    cout << "        NUMBER GENERATION APP               " << endl;
     cout << "============================================" << endl;
 
     // 1. Choose Base Uniform Generator
@@ -270,9 +270,9 @@ int main() {
       cout << "Empirical Correlation (" << numSamples << " samples): " << gen.Correlation(numSamples) << " (Expected: " << rho << ")" << endl;
     }
 
-    cout << "\nSimulation Complete. Thank you for using the Interactive Simulator!" << endl;
+    cout << "\nSimulation complete. Thank you for using the Number Generation App!" << endl;
   } catch (const exception &exception) {
-    cerr << "\nInteractive simulator stopped: " << exception.what() << endl;
+    cerr << "\nNumber generation app stopped: " << exception.what() << endl;
     return 1;
   }
 

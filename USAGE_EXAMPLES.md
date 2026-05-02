@@ -245,6 +245,6 @@ cd RandomNumberGeneration/build
 cmake --build . --target test_phase3
 ./test_phase3.exe
 
-# Or run interactive simulator
-./interactive_sim.exe
+# Or run the number-generation app
+./number_generation_app.exe
 ```

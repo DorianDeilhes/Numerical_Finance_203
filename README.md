@@ -37,7 +37,7 @@ It provides:
 |  |- Pricing/
 |  |- SDE/
 |  `- PDE/
-|- interactive_sim.cpp
+|- number_generation_app.cpp
 |- professor_smoke_test.cpp
 |- professor_editable_scenario.cpp
 |- report_results.cpp
@@ -101,16 +101,15 @@ lighter than recompiling the full source tree for every test and demo executable
 Use this exact sequence from the project root:
 
 ```bash
-rm -rf build
-cmake -S . -B build -G "Unix Makefiles"
+cmake -S . -B build
 cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
 ```
 
-Run the simulator:
+Run the number-generation app:
 
 ```bash
-./build/interactive_sim.exe
+./build/number_generation_app.exe
 ```
 
 Run professor-facing examples:
@@ -126,16 +125,15 @@ Run professor-facing examples:
 From the project root:
 
 ```bash
-rm -rf build
 cmake -S . -B build
 cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
 ```
 
-Run the simulator:
+Run the number-generation app:
 
 ```bash
-./build/interactive_sim
+./build/number_generation_app
 ```
 
 Run professor-facing examples:
@@ -145,6 +143,63 @@ Run professor-facing examples:
 ./build/professor_editable_scenario
 ./build/report_results
 ```
+
+### Typical Pricing Workflow
+
+1. Build and test once:
+
+```bash
+cmake -S . -B build
+cmake --build build --parallel 2
+ctest --test-dir build --output-on-failure
+```
+
+2. Run the fixed public demo:
+
+```bash
+./build/professor_smoke_test.exe
+```
+
+3. Create your own product by editing `professor_editable_scenario.cpp`.
+Change only the two clearly marked functions:
+
+```cpp
+BuildProductToModify()
+BuildPricerConfigToModify()
+```
+
+Example changes:
+
+- switch `product.exercise_style` between `EuropeanStyle` and `BermudanStyle`,
+- change `product.spot_prices`, `product.volatilities`, `product.weights`,
+- change `product.strike`, `product.maturity`, `product.risk_free_rate`,
+- edit `product.correlation_matrix`,
+- edit `product.exercise_dates` for Bermudan products,
+- change `config.pricing_method`,
+- change `config.random_generator`,
+- change `config.path_count`, `config.pair_count`, and `config.pilot_count`.
+
+4. Rebuild only the editable scenario:
+
+```bash
+cmake --build build --target professor_editable_scenario --parallel 2
+```
+
+5. Run the modified scenario:
+
+```bash
+./build/professor_editable_scenario.exe
+```
+
+6. Generate report data when needed:
+
+```bash
+./build/report_results.exe
+```
+
+This writes `report_results.csv` locally.
+
+You do not edit `.exe` files directly. You edit the `.cpp` source file, rebuild, then run the new executable.
 
 ### Build Parallelism Note
 
@@ -163,6 +218,26 @@ To build only one executable, use:
 ```bash
 cmake --build build --target professor_editable_scenario
 ```
+
+### Running Executables: PowerShell vs Git Bash
+
+If your prompt looks like `PS C:\...>`, you are in PowerShell. Use backslashes:
+
+```powershell
+.\build\professor_smoke_test.exe
+.\build\professor_editable_scenario.exe
+.\build\report_results.exe
+```
+
+If your prompt looks like `$`, you are usually in Git Bash. Use forward slashes:
+
+```bash
+./build/professor_smoke_test.exe
+./build/professor_editable_scenario.exe
+./build/report_results.exe
+```
+
+Do not use `.\build\...` in Git Bash: Bash treats backslashes as escape characters.
 
 ### If CMake Cannot Find a Make Program on Windows
 
@@ -184,14 +259,14 @@ If you do not have CMake configured, you can use the provided helper scripts fro
 
 **On Windows (CMD/PowerShell):**
 ```bash
-.\build_interactive.bat
-.\build\manual\interactive_sim.exe
+.\build_number_generation_app.bat
+.\build\manual\number_generation_app.exe
 ```
 
 **On Linux or macOS (Bash):**
 ```bash
-bash build_interactive.sh
-./build/manual/interactive_sim.exe
+bash build_number_generation_app.sh
+./build/manual/number_generation_app.exe
 ```
 
 **Verify Tests (Bash only):**
@@ -243,7 +318,8 @@ Cause: ad-hoc manual compilation without `-c -o` object output paths.
 Fix:
 
 - Use CMake build (recommended).
-- Or use `build_interactive.sh` / `build_interactive.bat` (already configured to write objects to `build/manual/obj/`).
+- Or use `build_number_generation_app.sh` / `build_number_generation_app.bat`
+  (already configured to write objects to `build/manual/obj/`).
 
 ## Implemented Generators
 
@@ -318,7 +394,7 @@ ctest --test-dir build -R basket_tests --output-on-failure
 
 ## Main Executables
 
-- `interactive_sim`: console simulator with strict input parsing.
+- `number_generation_app`: console app for the original random-number-generation part of the project.
 - `professor_smoke_test`: stable public workflow check.
 - `professor_editable_scenario`: easiest file for a professor/user to modify.
 - `report_results`: generates report-ready CSV output locally.

@@ -1,11 +1,11 @@
 @echo off
-echo Building Interactive Simulator...
+echo Building Number Generation App...
 
 if not exist build\manual mkdir build\manual
 if not exist build\manual\obj mkdir build\manual\obj
 
 rem Compile objects into build\manual\obj so the project root stays clean.
-g++ -I. -I include -std=c++11 -Wall -c interactive_sim.cpp -o build\manual\obj\interactive_sim.o
+g++ -I. -I include -std=c++11 -Wall -c number_generation_app.cpp -o build\manual\obj\number_generation_app.o
 if %errorlevel% neq 0 goto :build_failed
 g++ -I. -I include -std=c++11 -Wall -c src/RandomGenerator.cpp -o build\manual\obj\RandomGenerator.o
 if %errorlevel% neq 0 goto :build_failed
@@ -38,10 +38,10 @@ if %errorlevel% neq 0 goto :build_failed
 g++ -I. -I include -std=c++11 -Wall -c src/ContinuousGenerator/Normal.cpp -o build\manual\obj\Normal.o
 if %errorlevel% neq 0 goto :build_failed
 
-g++ -o build\manual\interactive_sim.exe build\manual\obj\interactive_sim.o build\manual\obj\RandomGenerator.o build\manual\obj\UniformGenerator.o build\manual\obj\PseudoGenerator.o build\manual\obj\LinearCongruential.o build\manual\obj\EcuyerCombined.o build\manual\obj\DiscreteGenerator.o build\manual\obj\HeadTail.o build\manual\obj\Bernoulli.o build\manual\obj\Binomial.o build\manual\obj\Finiteset.o build\manual\obj\Poisson.o build\manual\obj\ContinuousGenerator.o build\manual\obj\BivariateNormal.o build\manual\obj\Exponential.o build\manual\obj\Normal.o
+g++ -o build\manual\number_generation_app.exe build\manual\obj\number_generation_app.o build\manual\obj\RandomGenerator.o build\manual\obj\UniformGenerator.o build\manual\obj\PseudoGenerator.o build\manual\obj\LinearCongruential.o build\manual\obj\EcuyerCombined.o build\manual\obj\DiscreteGenerator.o build\manual\obj\HeadTail.o build\manual\obj\Bernoulli.o build\manual\obj\Binomial.o build\manual\obj\Finiteset.o build\manual\obj\Poisson.o build\manual\obj\ContinuousGenerator.o build\manual\obj\BivariateNormal.o build\manual\obj\Exponential.o build\manual\obj\Normal.o
 
 if %errorlevel% equ 0 (
-    echo Build successful! Run it using: .\build\manual\interactive_sim.exe
+    echo Build successful! Run it using: .\build\manual\number_generation_app.exe
 ) else (
     goto :build_failed
 )

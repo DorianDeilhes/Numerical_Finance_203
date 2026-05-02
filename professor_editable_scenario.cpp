@@ -72,21 +72,60 @@ BasketOptionProduct BuildProductToModify() {
   BasketOptionProduct product;
 
   // ========================== EDIT PRODUCT HERE ==========================
-  product.exercise_style = BermudanStyle;      // EuropeanStyle or BermudanStyle.
-  product.payoff_type = BasketCallPayoff;      // Current project payoff.
+  // Exercise style choices:
+  // - EuropeanStyle: payoff is paid only at maturity T.
+  // - BermudanStyle: payoff can be exercised on the dates in exercise_dates.
+  product.exercise_style = BermudanStyle;
 
+  // Payoff choices:
+  // - BasketCallPayoff: max(sum_i weights_i * S_i(t) - strike, 0).
+  // This payoff works with any number of underlyings.
+  // No other payoff type is implemented in the current project.
+  product.payoff_type = BasketCallPayoff;
+
+  // Initial asset prices S_i(0). The number of values is the basket dimension.
+  // Example with 2 underlyings: {100.0, 105.0}.
+  // Example with 3 underlyings: {100.0, 95.0, 110.0}.
   product.spot_prices = {100.0, 105.0};
+
+  // Black-Scholes volatilities sigma_i, one per underlying.
+  // Must have the same size as spot_prices. Values are annualized decimals:
+  // 0.20 means 20% volatility.
   product.volatilities = {0.20, 0.25};
+
+  // Basket weights alpha_i, one per underlying.
+  // The project statement allows possibly negative weights.
+  // The weights do not have to sum to 1 in this implementation.
   product.weights = {0.60, 0.40};
+
+  // Strike K of the basket call.
   product.strike = 100.0;
+
+  // Maturity T in years. Example: 1.0 means one year.
   product.maturity = 1.0;
+
+  // Risk-free rate r used in the Black-Scholes drift and discount factor.
+  // Example: 0.03 means 3% annual rate.
   product.risk_free_rate = 0.03;
 
+  // Correlation matrix R between asset Brownian motions.
+  // Size must be dimension x dimension, where dimension = spot_prices.size().
+  // Diagonal entries must be 1.0, the matrix must be symmetric, and it must be
+  // positive semidefinite. The code internally builds B such that R = B B^T.
+  // For 2 underlyings:
+  //   {{1.0, rho}, {rho, 1.0}}
+  // For 3 underlyings, provide a 3 x 3 matrix.
   product.correlation_matrix = {
       {1.0, 0.35},
       {0.35, 1.0}
   };
 
+  // Bermudan exercise dates in years. Used only when exercise_style is BermudanStyle.
+  // The dates must be increasing, inside [0, maturity], end exactly at maturity,
+  // and align with the simulation grid defined by nb_steps below.
+  // With maturity = 1.0 and nb_steps = 40, dates like 0.25, 0.50, 0.75, 1.0
+  // are aligned because the time step is 1.0 / 40 = 0.025.
+  // For EuropeanStyle, this vector is ignored by the pricing dispatch.
   product.exercise_dates = {0.25, 0.50, 0.75, 1.0};
   // ======================================================================
 
@@ -97,19 +136,57 @@ BasketPricerConfig BuildPricerConfigToModify() {
   BasketPricerConfig config;
 
   // ========================== EDIT PRICER HERE ==========================
+  // Pricing method choices:
+  // - BasicMonteCarlo: basic Monte Carlo with the selected random generator.
+  // - StaticControlVariate: uses Y_j = exp(-rT) * basket_T as control variate.
+  // - AntitheticVariables: pairs each path with opposite Gaussian shocks.
+  // - CumulativeVarianceReduction: control variate + antithetic variables
+  //   with the selected random generator. Use QuasiRandom here to match the
+  //   project requirement "quasi + control variate + antithetic".
   config.pricing_method = CumulativeVarianceReduction;
+
+  // Random generator choices:
+  // - PseudoRandom: EcuyerCombined pseudo-random uniform generator.
+  // - QuasiRandom: Halton low-discrepancy generator.
+  // Quasi-random numbers are deterministic and often reduce variance in practice.
   config.random_generator = QuasiRandom;
 
+  // Number of Black-Scholes time steps between 0 and maturity.
+  // Larger values can increase accuracy for path-dependent/exercise-date products,
+  // but they also increase runtime. Bermudan exercise_dates must align with this grid.
   config.nb_steps = 40;
+
+  // Number of Monte Carlo paths for BasicMonteCarlo and StaticControlVariate.
+  // Must be at least 2. Larger values reduce the standard error roughly as 1/sqrt(N).
   config.path_count = 1000;
+
+  // Number of direct/antithetic pairs for AntitheticVariables and
+  // CumulativeVarianceReduction. One pair means two simulated paths, but one
+  // estimator sample chi_j = 0.5 * (X_direct + X_antithetic).
   config.pair_count = 600;
+
+  // Number of pilot samples used to estimate the control variate coefficient beta.
+  // StaticControlVariate uses pilot_count paths.
+  // CumulativeVarianceReduction uses pilot_count antithetic pairs.
   config.pilot_count = 250;
 
+  // Seeds for the EcuyerCombined pseudo-random generator.
+  // Used only when random_generator = PseudoRandom.
   config.pseudo_seed_1 = 12345;
   config.pseudo_seed_2 = 67890;
 
+  // Halton dimension for QuasiRandom.
+  // Set to 0 for automatic choice based on basket dimension and nb_steps.
+  // If you set it manually, it must be between 1 and 4096.
   config.halton_dimension = 0;
+
+  // Optional deterministic shift for the Halton sequence.
+  // Keeping it true is a simple way to avoid always starting from exactly the
+  // same unshifted low-discrepancy points.
   config.use_halton_shift = true;
+
+  // Seed used to build the deterministic Halton shift.
+  // Used only when random_generator = QuasiRandom and use_halton_shift = true.
   config.halton_shift_seed = 0.314159;
   // ======================================================================
 

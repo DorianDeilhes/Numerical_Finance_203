@@ -60,6 +60,7 @@ Makefile
 *.exe
 *.out
 *.app
+/number_generation_app
 /interactive_sim
 /professor_smoke_test
 /professor_editable_scenario

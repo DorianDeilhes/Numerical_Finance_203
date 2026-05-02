@@ -46,7 +46,7 @@ endfunction()
 # ----------------------------------------------------------------------
 # User-facing executables
 # ----------------------------------------------------------------------
-add_project_executable(interactive_sim interactive_sim.cpp)
+add_project_executable(number_generation_app number_generation_app.cpp)
 add_project_executable(professor_smoke_test professor_smoke_test.cpp)
 add_project_executable(professor_editable_scenario professor_editable_scenario.cpp)
 add_project_executable(report_results report_results.cpp)

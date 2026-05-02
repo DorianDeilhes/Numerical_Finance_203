@@ -1,12 +1,12 @@
 #!/bin/bash
 
-echo "Building Interactive Simulator..."
+echo "Building Number Generation App..."
 
 mkdir -p build/manual
 mkdir -p build/manual/obj
 
 # Compile objects into build/manual/obj so the project root stays clean.
-g++ -I. -I include -std=c++11 -Wall -c interactive_sim.cpp -o build/manual/obj/interactive_sim.o || exit 1
+g++ -I. -I include -std=c++11 -Wall -c number_generation_app.cpp -o build/manual/obj/number_generation_app.o || exit 1
 g++ -I. -I include -std=c++11 -Wall -c src/RandomGenerator.cpp -o build/manual/obj/RandomGenerator.o || exit 1
 g++ -I. -I include -std=c++11 -Wall -c src/UniformGenerator/UniformGenerator.cpp -o build/manual/obj/UniformGenerator.o || exit 1
 g++ -I. -I include -std=c++11 -Wall -c src/UniformGenerator/PseudoGenerator.cpp -o build/manual/obj/PseudoGenerator.o || exit 1
@@ -23,8 +23,8 @@ g++ -I. -I include -std=c++11 -Wall -c src/ContinuousGenerator/BivariateNormal.c
 g++ -I. -I include -std=c++11 -Wall -c src/ContinuousGenerator/Exponential.cpp -o build/manual/obj/Exponential.o || exit 1
 g++ -I. -I include -std=c++11 -Wall -c src/ContinuousGenerator/Normal.cpp -o build/manual/obj/Normal.o || exit 1
 
-g++ -o build/manual/interactive_sim.exe \
-    build/manual/obj/interactive_sim.o \
+g++ -o build/manual/number_generation_app.exe \
+    build/manual/obj/number_generation_app.o \
     build/manual/obj/RandomGenerator.o \
     build/manual/obj/UniformGenerator.o \
     build/manual/obj/PseudoGenerator.o \
@@ -42,7 +42,7 @@ g++ -o build/manual/interactive_sim.exe \
     build/manual/obj/Normal.o
 
 if [ $? -eq 0 ]; then
-    echo "Build successful! Run it using: ./build/manual/interactive_sim.exe"
+    echo "Build successful! Run it using: ./build/manual/number_generation_app.exe"
 else
     echo "Build failed."
     exit 1
