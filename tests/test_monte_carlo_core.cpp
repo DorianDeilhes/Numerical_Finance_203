@@ -1,3 +1,23 @@
+// test_monte_carlo_core.cpp
+//
+// Unit tests for MonteCarloCore::RunFixedN and MonteCarloCore::RunFixedPrecision.
+// These two static methods are the lowest-level estimators used by every pricer
+// in the project, so their contract must hold exactly.
+//
+// Invariants checked:
+//   RunFixedN
+//     - mean, variance, and standard error match hand-computed values exactly
+//       (within floating-point rounding) on a deterministic 4-sample input
+//     - confidence interval bounds are ordered lower < upper
+//   RunFixedPrecision
+//     - constant sampler (zero variance) stops at minSamples immediately,
+//       because the CI half-width is already 0 < epsilon after the first batch
+//     - normal sampler respects both minSamples and maxSamples and delivers
+//       a CI half-width ≤ epsilon on exit
+//   Validation guards
+//     - null/empty sampler, sampleSize < 2, invalid confidence level,
+//       epsilon ≤ 0, minSamples < 2, maxSamples < minSamples, non-finite sample
+
 #include "ContinuousGenerator/Normal.h"
 #include "MonteCarlo/MonteCarloCore.h"
 #include "UniformGenerator/EcuyerCombined.h"

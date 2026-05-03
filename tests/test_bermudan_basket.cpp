@@ -1,3 +1,42 @@
+// test_bermudan_basket.cpp
+//
+// Correctness and validation tests for BermudanBasket pricing via the
+// Longstaff-Schwarz backward-induction algorithm.
+//
+// Economic invariants checked:
+//   Bermudan(T only) == European
+//     When the only exercise date is maturity, Longstaff-Schwarz degenerates
+//     to a plain European pricer.  Using the same EcuyerCombined seed for both
+//     forces identical path draws, so the prices must match to machine epsilon.
+//     This is the strongest consistency check in the suite.
+//   Bermudan(T only, with dividends) == European(same dividends)
+//     Same identity holds when dividend yields are non-zero, confirming that
+//     dividend-adjusted drifts flow through the backward pass correctly.
+//   Dividend early-exercise premium
+//     At dividend yield q = 0.10 > r = 0.03, the holder of the call has an
+//     incentive to exercise early (the underlying pays out more than the
+//     risk-free rate foregone by not holding cash).  The Bermudan price must
+//     exceed the European price by more than 2 combined standard errors.
+//   Monotonicity in exercise dates
+//     A denser exercise schedule (4 dates) must not produce a lower price than
+//     a sparser one (2 dates) beyond Monte Carlo noise.  Tested via CI overlap.
+//   Schedule starting at t0 = 0
+//     Immediate exercise at t=0 is legal; the algorithm must handle it without
+//     crashing or producing a non-finite result.
+//
+// Variance reduction methods (each must return finite, positive result):
+//   PriceFixedN with HaltonQuasiRandom
+//   PriceFixedNControlVariate with EcuyerCombined
+//   PriceFixedNAntithetic with EcuyerCombined
+//   PriceFixedNCumulative with HaltonQuasiRandom
+//
+// Validation guard coverage:
+//   empty exercise dates, non-increasing dates, last date ≠ maturity,
+//   dates misaligned with nb_steps grid, nb_steps = 0, NaN/Inf inputs,
+//   dividend size mismatch, negative dividend yield, null generator,
+//   sampleSize/pilotCount/pairCount < 2, negative or non-normalised weights
+//   for control variate methods
+
 #include "Pricing/BermudanBasket.h"
 #include "Pricing/EuropeanBasket.h"
 #include "UniformGenerator/EcuyerCombined.h"
@@ -63,6 +102,9 @@ void TestSingleExerciseMatchesEuropean() {
   BermudanBasket bermudan(spot, vol, weights, strike, maturity, rate, corr,
                           /*exercise_dates=*/{maturity}, /*nb_steps=*/100);
 
+  // Identical seeds force the same Gaussian draws in both pricers.
+  // With one exercise date at T, Longstaff-Schwarz skips the backward pass
+  // entirely and returns the discounted terminal payoff — identical to European.
   EcuyerCombined rng_eu(12345, 67890);
   EcuyerCombined rng_be(12345, 67890);
 
@@ -122,6 +164,9 @@ void TestDividendCreatesEarlyExercisePremium() {
   const double combined_se = std::sqrt(eu.sampleVariance / eu.sampleSize +
                                        be.sampleVariance / be.sampleSize);
 
+  // q = 0.10 > r = 0.03: the asset distributes more than the risk-free rate,
+  // so the holder forfeits dividend income by waiting — early exercise becomes
+  // optimal for sufficiently in-the-money paths.
   Check(be.mean > eu.mean + 2.0 * combined_se,
         "High dividend yield should create a visible Bermudan early-exercise premium");
 }

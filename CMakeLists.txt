@@ -55,27 +55,27 @@ add_project_executable(pde_vanilla_call_demo pde_vanilla_call_demo.cpp)
 # ----------------------------------------------------------------------
 # Test executables
 # ----------------------------------------------------------------------
-add_project_executable(test_all_fixed tests/test_all_fixed.cpp)
-add_project_executable(test_sde_fixed tests/test_sde_fixed.cpp)
-add_project_executable(test_mc_core tests/test_mc_core.cpp)
-add_project_executable(test_basket tests/test_basket.cpp)
-add_project_executable(test_phase3 tests/test_phase3.cpp)
-add_project_executable(test_bermudan tests/test_bermudan.cpp)
-add_project_executable(test_dividend tests/test_dividend.cpp)
-add_project_executable(test_phase6_stress tests/test_phase6_stress.cpp)
+add_project_executable(test_random_generators tests/test_random_generators.cpp)
+add_project_executable(test_stochastic_processes tests/test_stochastic_processes.cpp)
+add_project_executable(test_monte_carlo_core tests/test_monte_carlo_core.cpp)
+add_project_executable(test_european_basket tests/test_european_basket.cpp)
+add_project_executable(test_variance_reduction_methods tests/test_variance_reduction_methods.cpp)
+add_project_executable(test_bermudan_basket tests/test_bermudan_basket.cpp)
+add_project_executable(test_dividend_pricing tests/test_dividend_pricing.cpp)
+add_project_executable(test_large_basket_stress tests/test_large_basket_stress.cpp)
 
 # ----------------------------------------------------------------------
 # CTest registration
 # ----------------------------------------------------------------------
 enable_testing()
 
-add_test(NAME comprehensive_tests COMMAND test_all_fixed)
-add_test(NAME sde_tests COMMAND test_sde_fixed)
-add_test(NAME mc_core_tests COMMAND test_mc_core)
-add_test(NAME basket_tests COMMAND test_basket)
-add_test(NAME phase3_tests COMMAND test_phase3)
-add_test(NAME bermudan_tests COMMAND test_bermudan)
-add_test(NAME dividend_tests COMMAND test_dividend)
-add_test(NAME phase6_stress_tests COMMAND test_phase6_stress)
+add_test(NAME random_generator_tests COMMAND test_random_generators)
+add_test(NAME stochastic_process_tests COMMAND test_stochastic_processes)
+add_test(NAME monte_carlo_core_tests COMMAND test_monte_carlo_core)
+add_test(NAME european_basket_tests COMMAND test_european_basket)
+add_test(NAME variance_reduction_tests COMMAND test_variance_reduction_methods)
+add_test(NAME bermudan_basket_tests COMMAND test_bermudan_basket)
+add_test(NAME dividend_pricing_tests COMMAND test_dividend_pricing)
+add_test(NAME large_basket_stress_tests COMMAND test_large_basket_stress)
 add_test(NAME professor_smoke_test COMMAND professor_smoke_test)
 add_test(NAME pde_vanilla_call_demo COMMAND pde_vanilla_call_demo)

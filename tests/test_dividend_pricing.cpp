@@ -1,3 +1,51 @@
+// test_dividend_pricing.cpp
+//
+// Comprehensive validation of dividend-aware pricing across all methods and
+// edge cases.  This is the broadest suite in the project (28 checks).
+// It absorbs many of the checks that would otherwise live in separate files
+// because dividends interact with every code path: drift adjustment in the
+// GBM simulator, the geometric-basket control variate analytic mean, the
+// Longstaff-Schwarz backward pass, and the antithetic mirroring.
+//
+// Theory checks (closed-form comparisons):
+//   Zero volatility     — deterministic GBM: price = max(S0 - K*exp(-r*T), 0)
+//   1-asset vs BSM      — weight=1 basket is a plain call; tolerance = 3 SE
+//   Bermudan(T) = Euro  — same-seed exact match (strongest consistency test)
+//   VR ordering         — for fixed seeds: Var(cumulative) < Var(antithetic) < Var(basic)
+//                         (uses fixed seeds, so the ordering is deterministic)
+//
+// Dividend-specific invariants:
+//   Dividend early-exercise premium — at q = 0.10 > r = 0.03, Bermudan > European
+//                                     by more than 2 combined SE (statistically visible)
+//   Antithetic with dividends       — higher q reduces price; the reduction must be
+//                                     statistically significant under antithetic pricing
+//   Control variate with dividends  — same monotonicity check for PriceFixedNControlVariate
+//   Cumulative with dividends       — Bermudan premium visible under PriceFixedNCumulative
+//   KnownMean 1D vs BSM             — geometric basket analytic mean matches the
+//                                     Black-Scholes-Merton formula exactly (1e-12)
+//   KnownMean 2D vs Monte Carlo     — analytic mean matches direct MC estimate (3 SE)
+//   Strong t0 exercise              — deep-ITM, zero-vol, high-dividend: Bermudan
+//                                     must exercise at t=0, price = intrinsic value
+//   Multi-asset dividend sensitivity— higher dividends reduce European value and
+//                                     increase the Bermudan premium simultaneously
+//
+// Correlation edge cases:
+//   Identity correlation  — independent assets; Cholesky is diagonal
+//   Perfect correlation   — singular Σ; Jacobi fallback must produce finite prices
+//
+// Parameter edge cases:
+//   Zero-weight asset, all-zero weights, negative weights (European only)
+//   Zero strike (call = forward price of asset)
+//   Deterministic world (r = 0, σ = 0): exact price, zero variance
+//   Exercise date at t = 0
+//   Large sample run (N = 50000)
+//   Deep ITM / deep OTM European vs BSM
+//   Deep ITM Bermudan with dividends — visible premium even at moderate N
+//   Deep OTM Bermudan — premium should vanish (both prices ≈ 0)
+//
+// Input validation:
+//   Negative dividend yield, misaligned exercise date
+
 #include "MonteCarlo/Helper/SimulateGeometricBrownianTerminalND.h"
 #include "Pricing/BermudanBasket.h"
 #include "Pricing/EuropeanBasket.h"
@@ -178,6 +226,11 @@ void TestVarianceReductionOrdering() {
   const MonteCarloSummary antithetic = pricer.PriceFixedNAntithetic(&gen_antithetic, 1500);
   const MonteCarloSummary cumulative = pricer.PriceFixedNCumulative(&gen_cumulative, 1500, 500);
 
+  // Fixed seeds make the ordering deterministic: for these particular draws the
+  // antithetic correlation is negative (as expected for GBM), and the geometric
+  // basket control variate is highly correlated with the arithmetic basket payoff.
+  // The test would be flaky without fixed seeds because the ordering holds only
+  // in expectation, not sample-by-sample.
   Check(antithetic.sampleVariance < basic.sampleVariance,
         "Antithetic variance should be below basic variance for this seeded scenario");
   Check(cumulative.sampleVariance < antithetic.sampleVariance,

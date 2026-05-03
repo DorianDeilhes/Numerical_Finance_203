@@ -1,3 +1,28 @@
+// test_stochastic_processes.cpp
+//
+// Moment and correlation tests for all SDE discretization schemes, plus
+// validation-guard checks that reject malformed inputs at construction time.
+//
+// Each test simulates N paths, collects terminal values, and checks that
+// empirical mean and variance are within a tolerance that is deliberately wide
+// (≈3–4 sample standard deviations at N=2500) to avoid flakiness while still
+// catching major implementation bugs such as wrong drift or missing square-root.
+//
+// Processes tested:
+//   Brownian1D   — terminal value ~ N(0, T); mean ≈ 0, variance ≈ T
+//   BrownianND   — 2D correlated BM; checks per-component moments and the
+//                  empirical correlation of terminal increments
+//   BSEuler1D    — Euler-Maruyama GBM; E[S(T)] = S0 * exp(r*T) (risk-neutral)
+//   BSMilstein1D — Milstein GBM; same mean target with tighter tolerance
+//                  because Milstein has lower weak error than Euler
+//   BSMilstein2D — 2D correlated GBM; checks both marginal means and the
+//                  empirical correlation of log-returns (log-normal property)
+//   Heston       — stochastic volatility model; checks that variance process
+//                  stays non-negative along every path (Feller condition not
+//                  enforced, so reflection at 0 is implicit in the scheme)
+//   Validation   — confirms that degenerate grids, zero step counts, non-square
+//                  loading matrices, and invalid BS/Heston parameters throw
+
 #include "MonteCarlo/BSEuler1D.h"
 #include "MonteCarlo/BSMilstein1D.h"
 #include "MonteCarlo/BSMilstein2D.h"
@@ -100,6 +125,7 @@ void TestBrownian1D() {
   }
 
   const Moments moments = ComputeMoments(terminalValues);
+  // W(T) ~ N(0, T=1): mean = 0 ± 0.08, variance = 1 ± 0.12 at N=2000
   Check(std::fabs(moments.mean) < 0.08, "Brownian1D mean is outside tolerance");
   Check(std::fabs(moments.variance - 1.0) < 0.12,
         "Brownian1D variance is outside tolerance");
@@ -110,6 +136,7 @@ void TestBrownianND() {
 
   EcuyerCombined generator(12345, 67890);
   const double rho = 0.4;
+  // Lower-triangular Cholesky of [[1, rho],[rho, 1]]: B = [[1,0],[rho, sqrt(1-rho^2)]]
   std::vector<std::vector<double>> loadingMatrix = {
       {1.0, 0.0},
       {rho, std::sqrt(1.0 - rho * rho)},
