@@ -91,6 +91,7 @@ In `BuildProductToModify()`:
 | `strike` | Strike `K`. |
 | `maturity` | Maturity `T`, in years. |
 | `risk_free_rate` | Constant risk-free rate `r`. |
+| `dividend_yields` | Non-negative continuous dividend yields `q_i`, one per asset. Use `0.0` for no dividend. |
 | `correlation_matrix` | Square correlation matrix matching the basket dimension. |
 | `exercise_dates` | Bermudan exercise dates. First date may be `0.0`; last date must be maturity. Ignored for European products. |
 

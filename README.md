@@ -2,7 +2,7 @@
 
 Clean C++ project for numerical finance coursework.
 
-The project prices European and Bermudan basket options in a multidimensional Black-Scholes model using Monte Carlo simulation. It includes pseudo-random simulation, Halton quasi-random simulation, static control variates, antithetic variables, and Longstaff-Schwarz pricing for Bermudan options.
+The project prices European and Bermudan basket options in a multidimensional Black-Scholes model using Monte Carlo simulation. It includes pseudo-random simulation, Halton quasi-random simulation, static control variates, antithetic variables, optional continuous dividend yields, and Longstaff-Schwarz pricing for Bermudan options.
 
 ## Documentation
 

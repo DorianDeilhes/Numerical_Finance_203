@@ -71,6 +71,7 @@ product.weights = {0.60, 0.40};
 product.strike = 100.0;
 product.maturity = 1.0;
 product.risk_free_rate = 0.03;
+product.dividend_yields = {0.0, 0.0};
 
 product.correlation_matrix = {
     {1.0, 0.35},
@@ -79,6 +80,9 @@ product.correlation_matrix = {
 ```
 
 For `EuropeanStyle`, `exercise_dates` is ignored.
+The vector `dividend_yields` contains one non-negative continuous dividend
+yield per asset. Its size must match `spot_prices`. Use `0.0` for assets
+without dividends.
 
 ### Bermudan Two-Asset Basket
 
@@ -105,6 +109,7 @@ product.spot_prices = {100.0, 95.0, 110.0};
 product.volatilities = {0.18, 0.22, 0.30};
 product.weights = {0.70, 0.50, -0.20};
 product.strike = 102.0;
+product.dividend_yields = {0.0, 0.0, 0.0};
 
 product.correlation_matrix = {
     {1.0, 0.20, -0.10},
@@ -159,6 +164,8 @@ Y = exp(-rT) * (prod_i S_i(T)^alpha_i - K)^+
 
 The analytic value of `E[Y]` is computed by the program. This method requires
 all weights to be non-negative and to sum to `1`.
+If dividend yields are non-zero, the analytic control value uses the same
+dividend-adjusted Black-Scholes drift as the simulated basket paths.
 
 ### Antithetic Variables
 
@@ -197,6 +204,7 @@ int main() {
   std::vector<double> spot = {100.0, 105.0};
   std::vector<double> vol = {0.20, 0.25};
   std::vector<double> weights = {0.60, 0.40};
+  std::vector<double> dividends = {0.0, 0.0};
   std::vector<std::vector<double>> corr = {
       {1.0, 0.35},
       {0.35, 1.0}
@@ -207,7 +215,8 @@ int main() {
                         1.0,    // maturity
                         0.03,   // risk-free rate
                         corr,
-                        40);    // nb_steps
+                        40,     // nb_steps
+                        dividends);
 
   EcuyerCombined rng(12345, 67890);
   MonteCarloSummary result = basket.PriceFixedN(&rng, 10000);
