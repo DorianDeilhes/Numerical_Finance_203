@@ -1,3 +1,19 @@
+// test_random_generators.cpp
+//
+// Empirical mean validation for every random number generator in the project.
+// Each generator is constructed with fixed parameters, sampled 1000–10000 times,
+// and its empirical mean is printed alongside the theoretical expectation.
+// This suite is intentionally print-based rather than assertion-based: a human
+// reviewer can scan the output to spot systematic bias without needing exact
+// tolerances.  The checks are therefore soft — they do not call Check() — and
+// the suite passes as long as construction and sampling do not throw.
+//
+// Generators exercised:
+//   Uniform   : LinearCongruential, EcuyerCombined
+//   Discrete  : HeadTail, Bernoulli, Binomial, FiniteSet, Poisson (2 algorithms)
+//   Continuous: Exponential, Normal (Box-Muller, CLT, shifted mean),
+//               BivariateNormal (mean X, mean Y, empirical correlation)
+
 #include "ContinuousGenerator/BivariateNormal.h"
 #include "ContinuousGenerator/Exponential.h"
 #include "ContinuousGenerator/Normal.h"

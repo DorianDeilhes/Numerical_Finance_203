@@ -1,3 +1,23 @@
+// test_large_basket_stress.cpp
+//
+// Stress tests that exercise the loading-matrix decomposition and the full
+// pricing pipeline at basket dimensions far beyond the typical 2–3 asset case.
+// Path counts are intentionally tiny (6–30 paths) because the goal is to verify
+// numerical stability of construction and one pricing step, not pricing accuracy.
+//
+// Scenarios:
+//   10-asset equicorrelation (ρ = 0.25) — Cholesky succeeds on a well-conditioned
+//     positive-definite matrix; checks that EuropeanBasket returns a finite result
+//   50-asset block correlation — two blocks with within-block ρ = 0.30 and
+//     between-block ρ = 0.05; exercises BermudanBasket at scale with 2 exercise dates
+//   100-asset identity correlation — Cholesky trivial (diagonal); the main stress
+//     here is memory allocation and the Halton / Gaussian sampling loop at D=100
+//   Near-singular (30-asset ρ = 0.999) — Cholesky is numerically borderline;
+//     BuildLoadingMatrixFromCorrelation must still return a finite square matrix
+//     (it falls back to Jacobi eigendecomposition if Cholesky fails)
+//   Singular PSD (8-asset ρ = 1.0) — Cholesky fails; Jacobi fallback is required;
+//     verifies that the fallback path produces a finite loading matrix
+
 #include "Pricing/BermudanBasket.h"
 #include "Pricing/EuropeanBasket.h"
 #include "Pricing/Helper/BuildLoadingMatrixFromCorrelation.h"

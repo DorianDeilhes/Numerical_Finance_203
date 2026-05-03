@@ -1,3 +1,27 @@
+// test_european_basket.cpp
+//
+// Correctness and validation tests for EuropeanBasket pricing.
+//
+// Pricing invariants checked:
+//   1D basket      — a single asset with weight 1 is a plain European call;
+//                    price is positive and below the spot (no-arbitrage bound)
+//   Dividend 1D    — matches the Black-Scholes-Merton closed form for a
+//                    dividend-paying underlying (tolerance = 3 standard errors)
+//   2D basket      — two correlated assets; positive price, upper bound holds
+//   Reproducibility— same EcuyerCombined seed must produce bit-identical results
+//                    across two independent PriceFixedN calls
+//   FixedPrecision — adaptive sampler must honour both minSamples and the
+//                    epsilon CI-width target
+//
+// Validation guard coverage (every rule enforced at construction time):
+//   dimension mismatches (weights, volatilities, dividends)
+//   non-positive or non-finite spot prices, volatilities, weights, strike, rate
+//   correlation matrix: wrong shape, diagonal ≠ 1, asymmetric, entries outside
+//   [-1,1], NaN entries, non-PSD (Cholesky would fail)
+//   nb_steps = 0, zero dimension
+//   null generator, sampleSize/pairCount/pilotCount < 2
+//   control variate called with negative weights or weights not summing to 1
+
 #include "Pricing/EuropeanBasket.h"
 #include "UniformGenerator/EcuyerCombined.h"
 

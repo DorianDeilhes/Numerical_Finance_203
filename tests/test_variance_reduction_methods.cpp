@@ -1,3 +1,23 @@
+// test_variance_reduction_methods.cpp
+//
+// Smoke tests confirming that all four variance reduction layers run end-to-end
+// on a 2-asset European basket without producing NaN, Inf, or negative prices.
+// These tests do NOT verify numerical accuracy or variance ordering — that is
+// handled by test_dividend_pricing.cpp (TestVarianceReductionOrdering).
+// The purpose here is purely integration: each code path (quasi-random
+// generator wiring, control variate β estimation, antithetic mirroring, and
+// their combination) must complete without throwing and must return a finite,
+// positive price.
+//
+// Reference basket: S = {100, 105}, σ = {0.20, 0.25}, w = {0.60, 0.40},
+//                   K = 100, T = 1, r = 0.03, ρ = 0.35, nb_steps = 100
+//
+// Methods tested:
+//   1. PriceFixedN with HaltonQuasiRandom (quasi-random baseline)
+//   2. PriceFixedNControlVariate with EcuyerCombined (geometric basket CV)
+//   3. PriceFixedNAntithetic with EcuyerCombined (antithetic pairs)
+//   4. PriceFixedNCumulative with HaltonQuasiRandom (quasi + CV + antithetic)
+
 #include "Pricing/EuropeanBasket.h"
 #include "UniformGenerator/EcuyerCombined.h"
 #include "UniformGenerator/HaltonQuasiRandom.h"
