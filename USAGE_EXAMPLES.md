@@ -15,7 +15,7 @@ ctest --test-dir build --output-on-failure
 Run the fixed public demo:
 
 ```bash
-./build/professor_smoke_test.exe
+./build/professor_basic_test.exe
 ```
 
 This runs European and Bermudan examples and prints results for:

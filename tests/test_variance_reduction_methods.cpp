@@ -1,6 +1,6 @@
 // test_variance_reduction_methods.cpp
 //
-// Smoke tests confirming that all four variance reduction layers run end-to-end
+// Basic tests confirming that all four variance reduction layers run end-to-end
 // on a 2-asset European basket without producing NaN, Inf, or negative prices.
 // These tests do NOT verify numerical accuracy or variance ordering — that is
 // handled by test_dividend_pricing.cpp (TestVarianceReductionOrdering).

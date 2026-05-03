@@ -24,7 +24,7 @@ cmake --build build
 Git Bash:
 
 ```bash
-./build/professor_smoke_test.exe
+./build/professor_basic_test.exe
 ./build/professor_editable_scenario.exe
 ./build/report_results.exe
 ./build/pde_vanilla_call_demo.exe
@@ -34,7 +34,7 @@ Git Bash:
 PowerShell:
 
 ```powershell
-.\build\professor_smoke_test.exe
+.\build\professor_basic_test.exe
 .\build\professor_editable_scenario.exe
 .\build\report_results.exe
 .\build\pde_vanilla_call_demo.exe
@@ -44,7 +44,7 @@ PowerShell:
 ## Run On Linux Or macOS
 
 ```bash
-./build/professor_smoke_test
+./build/professor_basic_test
 ./build/professor_editable_scenario
 ./build/report_results
 ./build/pde_vanilla_call_demo
@@ -55,7 +55,7 @@ PowerShell:
 
 | Executable | Use |
 |---|---|
-| `professor_smoke_test` | Fixed demo to check that pricing works. |
+| `professor_basic_test` | Fixed demo to check that pricing works. |
 | `professor_editable_scenario` | Main file for custom products and pricer settings. |
 | `report_results` | Creates local `report_results.csv` for tables and graphs. |
 | `pde_vanilla_call_demo` | Optional one-asset European call PDE benchmark. |

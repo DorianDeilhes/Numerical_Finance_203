@@ -88,7 +88,7 @@ Makefile
 *.app
 /number_generation_app
 /interactive_sim
-/professor_smoke_test
+/professor_basic_test
 /professor_editable_scenario
 /report_results
 /pde_vanilla_call_demo

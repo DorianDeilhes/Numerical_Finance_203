@@ -35,7 +35,7 @@ ctest --test-dir build --output-on-failure
 
 ## Main Executables
 
-- `professor_smoke_test`: fixed demo to check that the pricing workflow works.
+- `professor_basic_test`: fixed demo to check that the pricing workflow works.
 - `professor_editable_scenario`: main executable for a user-defined product and pricer configuration.
 - `report_results`: generates `report_results.csv` locally for report tables and graphs.
 - `pde_vanilla_call_demo`: optional one-asset European call PDE benchmark.
@@ -44,14 +44,14 @@ ctest --test-dir build --output-on-failure
 On Windows with Git Bash, run for example:
 
 ```bash
-./build/professor_smoke_test.exe
+./build/professor_basic_test.exe
 ./build/professor_editable_scenario.exe
 ```
 
 On Linux/macOS, remove `.exe`:
 
 ```bash
-./build/professor_smoke_test
+./build/professor_basic_test
 ./build/professor_editable_scenario
 ```
 

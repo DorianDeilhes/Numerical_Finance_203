@@ -176,7 +176,7 @@ void RunBermudanWorkflow(const BasketOptionProduct& product,
 int main() {
   try {
     std::cout << "============================================================\n";
-    std::cout << "  PROFESSOR SMOKE TEST - BASKET OPTION PRICING\n";
+    std::cout << "  PROFESSOR BASIC TEST - BASKET OPTION PRICING\n";
     std::cout << "============================================================\n\n";
 
     const BasketPricerConfig config = BuildBasePricerConfig();
@@ -191,9 +191,9 @@ int main() {
     PrintProduct(bermudan_product);
     RunBermudanWorkflow(bermudan_product, config);
 
-    std::cout << "\n[PROFESSOR SMOKE TEST] Completed successfully.\n";
+    std::cout << "\n[PROFESSOR BASIC TEST] Completed successfully.\n";
   } catch (const std::exception& exception) {
-    std::cerr << "[PROFESSOR SMOKE TEST] Failure: " << exception.what() << std::endl;
+    std::cerr << "[PROFESSOR BASIC TEST] Failure: " << exception.what() << std::endl;
     return 1;
   }
 
