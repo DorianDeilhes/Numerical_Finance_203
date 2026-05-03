@@ -1,12 +1,24 @@
 #include "ContinuousGenerator/BivariateNormal.h"
 #include <cmath>
+#include <stdexcept>
 
 // Constructor
 BivariateNormal::BivariateNormal(double mu_x, double mu_y, double sigma_x,
                                  double sigma_y, double rho, NormalAlgo algo,
                                  UniformGenerator *uniformGen)
     : mu_x_(mu_x), mu_y_(mu_y), sigma_x_(sigma_x), sigma_y_(sigma_y), rho_(rho),
-      standardNormal_(0.0, 1.0, algo, uniformGen) {}
+      standardNormal_(0.0, 1.0, algo, uniformGen) {
+  if (!std::isfinite(mu_x_) || !std::isfinite(mu_y_)) {
+    throw std::invalid_argument("BivariateNormal: means must be finite");
+  }
+  if (!std::isfinite(sigma_x_) || sigma_x_ < 0.0 ||
+      !std::isfinite(sigma_y_) || sigma_y_ < 0.0) {
+    throw std::invalid_argument("BivariateNormal: sigmas must be finite and non-negative");
+  }
+  if (!std::isfinite(rho_) || rho_ < -1.0 || rho_ > 1.0) {
+    throw std::invalid_argument("BivariateNormal: rho must be in [-1, 1]");
+  }
+}
 
 // Generate one bivariate Gaussian sample.
 std::pair<double, double> BivariateNormal::Generate() {
@@ -25,6 +37,10 @@ std::pair<double, double> BivariateNormal::Generate() {
 
 // Empirical mean of X.
 double BivariateNormal::MeanFirst(unsigned long nbSim) {
+  if (nbSim == 0) {
+    throw std::invalid_argument("BivariateNormal::MeanFirst requires nbSim > 0");
+  }
+
   double sum = 0.0;
 
   for (unsigned long i = 0; i < nbSim; i++) {
@@ -36,6 +52,10 @@ double BivariateNormal::MeanFirst(unsigned long nbSim) {
 
 // Empirical mean of Y.
 double BivariateNormal::MeanSecond(unsigned long nbSim) {
+  if (nbSim == 0) {
+    throw std::invalid_argument("BivariateNormal::MeanSecond requires nbSim > 0");
+  }
+
   double sum = 0.0;
 
   for (unsigned long i = 0; i < nbSim; i++) {
@@ -47,6 +67,10 @@ double BivariateNormal::MeanSecond(unsigned long nbSim) {
 
 // Empirical correlation Corr(X, Y).
 double BivariateNormal::Correlation(unsigned long nbSim) {
+  if (nbSim == 0) {
+    throw std::invalid_argument("BivariateNormal::Correlation requires nbSim > 0");
+  }
+
   double sumX = 0.0;
   double sumY = 0.0;
   double sumX2 = 0.0;

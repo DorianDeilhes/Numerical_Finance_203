@@ -3,6 +3,9 @@
 
 RandomProcess::RandomProcess(RandomGenerator* generator, int dimension)
     : Generator_(generator), Dimension_(dimension) {
+  if (generator == nullptr) {
+    throw std::runtime_error("RandomProcess requires a valid random generator");
+  }
   if (dimension <= 0) {
     throw std::runtime_error("RandomProcess requires a strictly positive dimension");
   }

@@ -21,6 +21,10 @@ tests/test_ecuyer.cpp
 tests/test_generators.cpp
 tests/test_lcg.cpp
 
+# Local ad-hoc tests created while reviewing/fixing modules.
+tests/local_*.cpp
+tests/test_local_*.cpp
+
 # ----------------------------------------------------------------------
 # Generated report/result artifacts
 # Keep the source programs tracked, but regenerate their outputs locally.

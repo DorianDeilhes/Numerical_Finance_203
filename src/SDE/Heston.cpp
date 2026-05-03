@@ -11,6 +11,12 @@ Heston::Heston(RandomGenerator* generator, double spot, double initVariance,
                double mu, double theta, double kappa, double sigma, double rho)
     : RandomProcess(generator, 2), Spot_(spot), InitVariance_(initVariance),
       Mu_(mu), Theta_(theta), Kappa_(kappa), Sigma_(sigma), Rho_(rho) {
+  if (!std::isfinite(spot) || !std::isfinite(initVariance) ||
+      !std::isfinite(mu) || !std::isfinite(theta) ||
+      !std::isfinite(kappa) || !std::isfinite(sigma) || !std::isfinite(rho)) {
+    throw std::runtime_error(
+        "Heston requires finite spot, variance, drift, theta, kappa, sigma and rho");
+  }
   if (!(spot > 0.0)) {
     throw std::runtime_error("Heston requires a strictly positive spot");
   }

@@ -1,5 +1,6 @@
 #include "ContinuousGenerator/Normal.h"
 #include <cmath>
+#include <stdexcept>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -9,7 +10,21 @@
 Normal::Normal(double mu, double sigma, NormalAlgo algo,
                UniformGenerator *uniformGen)
     : mu_(mu), sigma_(sigma), algo_(algo), uniformGen_(uniformGen),
-      hasSpare_(false), spare_(0.0) {}
+      hasSpare_(false), spare_(0.0) {
+  if (!std::isfinite(mu_)) {
+    throw std::invalid_argument("Normal: mean must be finite");
+  }
+  if (!std::isfinite(sigma_) || sigma_ < 0.0) {
+    throw std::invalid_argument("Normal: sigma must be finite and non-negative");
+  }
+  if (algo_ != BoxMuller && algo_ != CentralLimitTheorem &&
+      algo_ != NormalRejectionSampling) {
+    throw std::invalid_argument("Normal: unknown generation algorithm");
+  }
+  if (uniformGen_ == 0) {
+    throw std::invalid_argument("Normal: uniform generator must not be null");
+  }
+}
 
 // Generate - dispatches to selected algorithm
 double Normal::Generate() {
@@ -36,6 +51,9 @@ double Normal::GenerateBoxMuller() {
 
   // Generate two uniform values
   double U1 = uniformGen_->Generate();
+  while (U1 <= 0.0) {
+    U1 = uniformGen_->Generate();
+  }
   double U2 = uniformGen_->Generate();
 
   // Box-Muller transform
@@ -86,6 +104,9 @@ double Normal::GenerateRejection() {
 
     // Generate E(1) using inverse transform
     double U2 = uniformGen_->Generate();
+    while (U2 <= 0.0) {
+      U2 = uniformGen_->Generate();
+    }
     double X = -log(U2) * sign; // Double exponential
 
     // Acceptance/rejection
